@@ -1,0 +1,11 @@
+# @package _global_
+defaults:
+  - /base_configs/simba_lander
+  - _self_
+
+method_name: "Simba_Lander_Heavy"
+env:
+  mode: "heavy"
+
+run_name: "${method_name}_seed${seed}"
+

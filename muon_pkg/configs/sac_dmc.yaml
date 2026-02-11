@@ -1,0 +1,161 @@
+# @package _global_
+# Base SAC configuration for DMC environments (used to study optimizer effects, incl. Muon).
+
+seed: 42
+
+env:
+  render_size: [128, 128]
+  n_sub_steps: 1
+  seed: ${seed}
+
+training:
+  # Core loop
+  total_timesteps: 1000000
+  run_name: ${run_name}
+  checkpoint_dir: "./muon_checkpoints/${run_name}"
+  seed: ${seed}
+
+  # Replay buffer
+  replay_dir: "./muon_checkpoints/${run_name}/replay_buffer"
+  capacity: 1000000
+  discount: 0.99
+
+  # SAC specifics
+  learning_starts: 5000
+  batch_size: 512
+  utd_ratio: 2
+  policy_delay: 1
+  tau: 0.005
+
+  # Optional alias for delayed momentum experiments (H6).
+  # If >0 and the corresponding *_momentum_schedule.mode is "none",
+  # we will automatically apply a delayed schedule starting at warmup_steps.
+  warmup_steps: 0
+  warmup_reset_state: false
+
+  # Entropy temperature
+  autotune_alpha: true
+  init_alpha: 0.2
+  alpha_lr: 3e-4
+  target_entropy: "auto"   # "auto" -> -action_dim, set in train script
+
+  # Normalization (optional)
+  normalize_observations: false
+  normalize_rewards: false
+  normalized_g_max: 1000.0
+
+  # Optimizer stacks (actor/critic)
+  # case: adam | adamw | muon
+  actor_optimizer:
+    case: "adamw"
+    lr: 3e-4
+    weight_decay: 1e-3
+    betas: [0.9, 0.999]
+    eps: 1e-8
+    # Used only when case: "muon"
+    muon:
+      lr: 3e-4
+      weight_decay: 0.0
+      momentum: 0.95
+      nesterov: true
+      ns_steps: 5
+      lowrank: false
+      apply_first_layer: true
+      # For actor, "last layer" = mean/log_std heads (often excluded)
+      apply_last_layer: false
+    fallback:
+      type: "adamw"
+      lr: 3e-4
+      weight_decay: 0.0
+      betas: [0.9, 0.999]
+      eps: 1e-8
+
+  critic_optimizer:
+    case: "adamw"
+    lr: 3e-4
+    weight_decay: 1e-3
+    betas: [0.9, 0.999]
+    eps: 1e-8
+    # Used only when case: "muon"
+    muon:
+      lr: 3e-4
+      weight_decay: 0.0
+      momentum: 0.95
+      nesterov: true
+      ns_steps: 5
+      lowrank: false
+      apply_first_layer: true
+      apply_last_layer: true
+    fallback:
+      type: "adamw"
+      lr: 3e-4
+      weight_decay: 0.0
+      betas: [0.9, 0.999]
+      eps: 1e-8
+
+  # Momentum schedules: lets you “turn on” momentum/beta1 later
+  # enabled: false -> no schedule (keep optimizer defaults)
+  # enabled: true  -> use 0.0 until start_step, then use optimizer default momentum/beta1
+  actor_momentum_schedule:
+    enabled: false
+    step_unit: "global_step"   # global_step | update_step
+    start_step: 0
+    reset_state_on_start: false
+
+  critic_momentum_schedule:
+    enabled: false
+    step_unit: "global_step"
+    start_step: 0
+    reset_state_on_start: false
+
+  # Representation logging (H3: feature rank collapse)
+  # NOTE: SVD is expensive for very large batches; keep frequency low or max_samples small.
+  rank_logging:
+    enabled: false
+    every_n_updates: 1000
+    max_samples: 512
+    center: true
+    topk: 10
+
+  # Misc
+  max_grad_norm: 1.0
+  use_compile: true
+
+  # Eval/logging/checkpointing
+  eval_every: 10000
+  eval_episodes: 10
+  save_video_every: 100000
+  save_freq: 1000
+  save_video_fps: 30
+  resume: true
+  use_wandb: false
+  save_video: true
+  wandb_project_name: "MuRL"
+  wandb_entity: null
+  wandb_group: ${method_name}
+  stream_to_local_buffer: true
+  save_episodes_to_disk: true
+  keep_checkpoint_num: 5
+
+# Model configs (simple MLP actor/critic in muon_pkg/toy_model.py)
+actor_args:
+  hidden_dims: [256, 256]
+  activation: "relu"
+  norm: "none"            # none | layernorm | l2
+  spectral_norm: false
+  residual: false
+  residual_projection: false
+  dropout: 0.0
+  log_std_min: -5.0
+  log_std_max: 2.0
+
+critic_args:
+  hidden_dims: [256, 256]
+  activation: "relu"
+  norm: "none"
+  spectral_norm: false
+  residual: false
+  residual_projection: false
+  dropout: 0.0
+
+

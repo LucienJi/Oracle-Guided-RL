@@ -1,0 +1,81 @@
+# @package _global_
+defaults:
+  - sac_dmc
+  - _self_
+
+method_name: "DEBUG"
+
+env:
+  domain_name: "cheetah"
+  task_name: "run"
+
+obs_config:
+  position: [8]
+  velocity: [9]
+
+run_name: "${method_name}_${env.domain_name}_${env.task_name}_seed${seed}"
+
+training:
+  # --- Muon example (Case3) ---
+  # Muon handles most 2D weights, while fallback AdamW handles:
+  # - all 0/1D params (biases, LN scales, etc.)
+  # - optionally the first/last layer weights (controlled below)
+  actor_optimizer:
+    case: "muon"
+    muon:
+      lr: 3e-4
+      weight_decay: 1e-3
+      momentum: 0.95
+      nesterov: true
+      ns_steps: 5
+      lowrank: false
+      # Exclude actor Gaussian heads (mean/log_std) from Muon
+      apply_first_layer: true
+      apply_last_layer: false
+    fallback:
+      type: "adamw"
+      lr: 3e-4
+      weight_decay: 0.0
+      betas: [0.9, 0.999]
+      eps: 1e-8
+
+  critic_optimizer:
+    case: "muon"
+    muon:
+      lr: 3e-4
+      weight_decay: 1e-3
+      momentum: 0.95
+      nesterov: true
+      ns_steps: 5
+      lowrank: false
+      apply_first_layer: true
+      apply_last_layer: true
+    fallback:
+      type: "adamw"
+      lr: 3e-4
+      weight_decay: 0.0
+      betas: [0.9, 0.999]
+      eps: 1e-8
+
+  # Example: “turn on” momentum late (ablation for hypothesis #4).
+  # For Adam/AdamW this controls beta1; for Muon it controls momentum.
+  actor_momentum_schedule:
+    enabled: true
+    step_unit: "global_step"
+    start_step: 50000
+    reset_state_on_start: true
+
+  critic_momentum_schedule:
+    enabled: true
+    step_unit: "global_step"
+    start_step: 50000
+    reset_state_on_start: true
+
+  eval_every: 10000
+  save_freq: 1000
+  save_video_every: 100000
+  use_wandb: true
+  use_compile: true
+  save_video: false
+
+

@@ -1,0 +1,32 @@
+# @package _global_
+defaults:
+  - /base_configs/bc_dmc
+  - _self_
+
+method_name: "BC_Hopper"
+seed: 42
+
+env:
+  domain_name: "hopper"
+  task_name: "stand"
+  render_size: [128,128]
+  n_sub_steps: 1
+  seed: ${seed}
+
+obs_config:
+  position: [6]  # Joint orientations
+  velocity: [7]         # Height of the walker
+  touch: [2]      # Joint velocities
+
+run_name: ${method_name}_${env.domain_name}_${env.task_name}_seed${seed}
+
+training:
+  # Offline dataset location (must contain *.npz episodes)
+  replay_dir: "/share/data/ripl/jjt/projects/oracles/checkpoints/Baseline_Hopper_hopper_stand_seed0/replay_buffer"
+  expert_dir: "/share/data/ripl/jjt/projects/oracles/checkpoints/Baseline_Hopper_hopper_stand_seed0"
+
+  # Runtime knobs / logging
+  use_compile: true
+  use_wandb: true
+  save_video_every: 100000
+  save_video: true

@@ -1,0 +1,30 @@
+# @package _global_
+defaults:
+  - /base_configs/loki_dmc
+  - /oracles/dmc/humanoid_run
+  - _self_
+method_name: "LOKI"
+
+seed: 42
+
+env:
+  domain_name: "humanoid"
+  task_name: "run"
+
+obs_config:
+  joint_angles: [21]
+  head_height: [1]
+  extremities: [12]
+  torso_vertical: [3]
+  com_velocity: [3]
+  velocity: [27]
+
+run_name: ${method_name}_${env.domain_name}_${env.task_name}_seed${seed}
+
+training:
+  n_oracles: 3
+  use_wandb: true
+  save_video: true
+
+
+

@@ -1,0 +1,11 @@
+# @package _global_
+defaults:
+  - /base_configs/simba_racingcar
+  - _self_
+
+method_name: "Simba_Racingcar_Drifter"
+env:
+  mode: "drifter"
+
+run_name: "${method_name}_seed${seed}"
+

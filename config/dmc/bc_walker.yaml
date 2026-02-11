@@ -1,0 +1,32 @@
+# @package _global_
+defaults:
+  - /base_configs/bc_dmc
+  - _self_
+
+method_name: "BC_Walker"
+seed: 42
+
+env:
+  domain_name: "walker"
+  task_name: "walk"
+  render_size: [128,128]
+  n_sub_steps: 1
+  seed: ${seed}
+
+obs_config:
+  orientations: [14]  # Joint orientations
+  height: [1]         # Height of the walker
+  velocity: [9]      # Joint velocities
+
+run_name: ${method_name}_${env.domain_name}_${env.task_name}_seed${seed}
+
+training:
+  # Offline dataset location (must contain *.npz episodes)
+  replay_dir: "/share/data/ripl/jjt/projects/oracles/checkpoints/Baseline_Walker_walker_walk_seed0/replay_buffer"
+  expert_dir: "/share/data/ripl/jjt/projects/oracles/checkpoints/Baseline_Walker_walker_walk_seed0"
+
+  # Runtime knobs / logging
+  use_compile: true
+  use_wandb: true
+  save_video_every: 100000
+  save_video: true

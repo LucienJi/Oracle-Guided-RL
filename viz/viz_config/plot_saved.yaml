@@ -1,0 +1,20 @@
+# Configuration for plotting saved .npy visualization data
+# Usage: python viz/plot_saved.py npy_path=/path/to/data.npy
+
+# Path to the saved .npy data file (required)
+NPY_PATH: "/share/data/ripl/jjt/projects/oracles/viz_results/quadruped_eval.npy"
+
+# Plot settings
+PLOT_SETTINGS:
+  x_label: "Environment Steps"
+  y_label: "Score"
+  title: "RL Evaluation Performance"  # Set to null to disable
+  figsize: [8, 5]
+  font_size: 16
+  legend_font_size: 14
+  show_legend: true
+  dpi: 200
+
+# Optional: path to save the plot image (set to null to skip saving)
+SAVE_PATH: null  # e.g., "/path/to/output.png"
+

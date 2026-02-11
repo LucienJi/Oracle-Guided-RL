@@ -1,0 +1,35 @@
+# @package _global_
+defaults:
+  - /base_configs/bc_dmc
+  - _self_
+
+method_name: "BC_Humanoid"
+seed: 42
+
+env:
+  domain_name: "humanoid"
+  task_name: "run"
+  render_size: [128,128]
+  n_sub_steps: 1
+  seed: ${seed}
+# Observation configuration (list shapes will be converted to tuples in code)
+obs_config:
+  joint_angles: [21]    # Joint angles
+  head_height: [1]      # Head height
+  extremities: [12]     # Extremity positions
+  torso_vertical: [3]   # Torso vertical orientation
+  com_velocity: [3]     # Center of mass velocity
+  velocity: [27]        # Joint velocities
+
+run_name: ${method_name}_${env.domain_name}_${env.task_name}_seed${seed}
+
+training:
+  # Offline dataset location (must contain *.npz episodes)
+  replay_dir: "/share/data/ripl/jjt/projects/oracles/checkpoints/Baseline_Humanoid_humanoid_run_seed0/replay_buffer"
+  expert_dir: "/share/data/ripl/jjt/projects/oracles/checkpoints/Baseline_Humanoid_humanoid_run_seed0"
+
+  # Runtime knobs / logging
+  use_compile: true
+  use_wandb: true
+  save_video_every: 100000
+  save_video: true

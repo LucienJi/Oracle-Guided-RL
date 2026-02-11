@@ -1,0 +1,41 @@
+# @package _global_
+defaults:
+  - /base_configs/maxAdv_dmc
+  - /oracles/dmc/humanoid_run
+  - _self_
+method_name: "DEBUG"
+
+
+seed: 42
+
+env:
+  domain_name: "humanoid"
+  task_name: "run"
+  render_size: [128,128]
+  n_sub_steps: 1
+  seed: ${seed}
+# Observation configuration (list shapes will be converted to tuples in code)
+obs_config:
+  joint_angles: [21]    # Joint angles
+  head_height: [1]      # Head height
+  extremities: [12]     # Extremity positions
+  torso_vertical: [3]   # Torso vertical orientation
+  com_velocity: [3]     # Center of mass velocity
+  velocity: [27]        # Joint velocities
+
+run_name: ${method_name}_${env.domain_name}_${env.task_name}_seed${seed}
+training:
+  # Oracle configuration
+  baseline_greedy_guided: true
+  n_oracles: 3
+
+
+  # Logging / runtime
+  save_video_every: 100000
+  use_wandb: true  # whether to use Weights & Biases for logging
+  use_compile: true
+  save_video: true  # Whether to save video
+  wandb_project_name: DMC
+
+  
+  

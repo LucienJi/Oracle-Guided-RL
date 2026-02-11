@@ -1,0 +1,12 @@
+# @package _global_
+defaults:
+  - /base_configs/simba_weather
+  - _self_
+
+method_name: "SIMBA_DEBUG"
+env:
+  mode: "learner"
+
+run_name: "${method_name}_seed${seed}"
+
+

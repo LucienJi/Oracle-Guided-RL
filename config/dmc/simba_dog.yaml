@@ -1,0 +1,40 @@
+# @package _global_
+defaults:
+  - /base_configs/simba_dmc
+  - _self_
+method_name: "Simba_DEBUG"
+env:
+  domain_name: "dog"
+  task_name: "walk"
+  render_size: [128,128]
+  n_sub_steps: 1
+  seed: ${seed}
+# Observation configuration (list shapes will be converted to tuples in code)
+obs_config:
+  joint_angles: [73]
+  joint_velocites: [73]
+  torso_pelvis_height: [2]
+  z_projection: [9]
+  torso_com_velocity: [3]
+  inertial_sensors: [9]
+  foot_forces: [12]
+  touch_sensors: [4]
+  actuator_state: [38]
+
+run_name: "${method_name}_${env.domain_name}_${env.task_name}_seed${seed}"
+
+# Algorithm parameters
+training:
+  total_timesteps: 5000000
+  capacity: 5000000
+  exploration_decay_steps: 5000000
+  max_exploration_std: 0.35
+  min_exploration_std: 0.01
+  save_video_every: 100000
+  eval_every: 10000  # How often to evaluate the policy (steps)
+  save_freq: 1000  # How often to save checkpoints (steps)
+  resume: true  # Whether to resume from a checkpoint
+  use_wandb: true  # whether to use Weights & Biases for logging
+  track: true  # Whether to track metrics
+  use_compile: true
+  save_video: true  # Whether to save video

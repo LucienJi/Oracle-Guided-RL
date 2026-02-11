@@ -1,0 +1,38 @@
+# @package _global_
+defaults:
+  - /base_configs/bc_dmc
+  - _self_
+
+method_name: "BC_Quad"
+seed: 42
+
+env:
+  domain_name: "quadruped"
+  task_name: "run"
+  render_size: [128,128]
+  n_sub_steps: 1
+  seed: ${seed}
+
+# Observation configuration (list shapes will be converted to tuples in code, if needed)
+obs_config:
+  egocentric_state: [44]
+  torso_velocity: [3]
+  torso_upright: [1]
+  imu: [6]
+  force_torque: [24]
+
+run_name: ${method_name}_${env.domain_name}_${env.task_name}_seed${seed}
+
+training:
+  # Offline dataset location (must contain *.npz episodes)
+  replay_dir: "/share/data/ripl/jjt/projects/oracles/checkpoints/Baseline_Quad_quadruped_run_seed0/replay_buffer"
+  expert_dir: "/share/data/ripl/jjt/projects/oracles/checkpoints/Baseline_Quad_quadruped_run_seed0"
+
+  # Runtime knobs / logging
+  use_compile: true
+  use_wandb: true
+  save_video_every: 100000
+  save_video: true
+
+
+

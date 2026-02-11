@@ -1,0 +1,17 @@
+name: oracles
+channels:
+  - pytorch
+  - nvidia
+  - conda-forge
+dependencies:
+  - python=3.10
+  - pip
+  - pytorch
+  - torchvision
+  - pytorch-cuda=12.4  
+  - mujoco>=3.3
+  - glfw
+  - glew
+  - ffmpeg
+  - pip:
+      - -r base.txt

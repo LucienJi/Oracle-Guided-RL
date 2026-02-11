@@ -1,0 +1,27 @@
+# @package _global_
+defaults:
+  - /base_configs/bc_box2d
+  - _self_
+
+method_name: "BC_Weather_Learner"
+
+env:
+  env_name: "weather"
+  mode: "learner"
+  stack_frames: 4
+  max_steps: 2000
+  seed: ${seed}
+
+obs_config:
+  state: [184]
+
+run_name: ${method_name}_${env.env_name}_${env.mode}_seed${seed}
+
+training:
+  replay_dir: ""
+  expert_dir: ""
+
+actor_args:
+  action_high: [1.0, 1.0, 1.0]
+  action_low: [-1.0, 0.0, 0.0]
+

@@ -1,0 +1,8 @@
+# @package _global_
+training:
+  oracle_std_multiplier: [0.2, 0.2, 0.2]
+oracles_dict:
+  oracle_0: '/share/data/ripl/jjt/projects/oracles/checkpoints/BC_Cheetah_cheetah_run_seed0/BC_Cheetah_cheetah_run_seed0_999.pt'
+  oracle_1: '/share/data/ripl/jjt/projects/oracles/checkpoints/BC_Cheetah_cheetah_run_seed0/BC_Cheetah_cheetah_run_seed0_1999.pt'
+  oracle_2: null
+

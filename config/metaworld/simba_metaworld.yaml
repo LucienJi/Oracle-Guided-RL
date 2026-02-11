@@ -1,0 +1,16 @@
+# @package _global_
+defaults:
+  - /base_configs/simba_metaworld
+  - _self_
+method_name: "Simba_Metaworld_Learner"
+
+seed: 42
+
+env:
+  env_name: "assembly-v3"
+  camera_to_render: "corner4"
+  seed: ${seed}
+
+run_name: ${method_name}_${env.env_name}_seed${seed}
+
+

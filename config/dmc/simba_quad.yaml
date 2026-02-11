@@ -1,0 +1,32 @@
+# @package _global_
+defaults:
+  - /base_configs/simba_dmc
+  - _self_
+method_name: "Simba_Quad_DEBUG"
+env:
+  domain_name: "quadruped"
+  task_name: "run"
+  render_size: [128,128]
+  n_sub_steps: 1
+  seed: ${seed}
+
+# Observation configuration (list shapes will be converted to tuples in code)
+obs_config:
+  egocentric_state: [44]
+  torso_velocity: [3]
+  torso_upright: [1]
+  imu: [6]
+  force_torque: [24]
+
+run_name: "${method_name}_${env.domain_name}_${env.task_name}_seed${seed}"
+
+# Algorithm parameters
+training:
+  save_video_every: 100000
+  eval_every: 10000  # How often to evaluate the policy (steps)
+  save_freq: 1000  # How often to save checkpoints (steps)
+  resume: true  # Whether to resume from a checkpoint
+  use_wandb: true  # whether to use Weights & Biases for logging
+  track: true  # Whether to track metrics
+  use_compile: true
+  save_video: true  # Whether to save video

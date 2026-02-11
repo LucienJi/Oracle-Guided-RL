@@ -1,0 +1,78 @@
+# @package _global_
+# Base BC (offline) configuration for DMC environments.
+#
+# Notes:
+# - BC trains purely from a disk-backed ReplayBuffer; make sure `training.replay_dir`
+#   points at a directory containing `*.npz` episodes (otherwise the buffer will be empty).
+# - BaseAlgo requires `discount`, `tau`, `checkpoint_dir`, `run_name`, and video/logging keys.
+
+seed: 42
+save_video_fps: 30
+
+env:
+  render_size: [128, 128]
+  n_sub_steps: 1
+  seed: ${seed}
+
+training:
+  # -----------------------
+  # Core training / bookkeeping
+  # -----------------------
+  total_timesteps: 10000
+  run_name: ${run_name} # defined in task-specific config
+  checkpoint_dir: "./checkpoints/${run_name}"
+  seed: ${seed}
+
+  # -----------------------
+  # Offline replay buffer
+  # -----------------------
+  # Override this in env-specific configs to point at an existing dataset directory.
+  replay_dir: "./datasets/dmc/${env.domain_name}_${env.task_name}"
+  capacity: 1000000
+  nstep: 1
+  discount: 0.99
+  tau: 0.005
+
+
+  # -----------------------
+  # BC optimization
+  # -----------------------
+  batch_size: 512
+  utd_ratio: 1
+  actor_lr: 3e-4
+  weight_decay: 1e-3
+  max_grad_norm: 1.0
+  use_compile: true
+
+  # -----------------------
+  # Evaluation / logging / checkpointing
+  # -----------------------
+  eval_every: 1000
+  eval_episodes: 10
+  save_freq: 1000
+  resume: true
+
+  use_wandb: false
+  wandb_project_name: "DMC"
+  wandb_entity: "jingtianji"
+  wandb_group: ${method_name}
+
+  save_video: true
+  save_video_every: 100000
+  save_video_fps: ${save_video_fps}
+
+  keep_checkpoint_num: 100
+
+  # ReplayBuffer behavior flags (offline default: do not write new episodes)
+  save_episodes_to_disk: false
+
+
+# MLP actor used by BC (see `model/mlp.py:DeterministicPolicy` / `OraclePolicyBase`)
+# `action_high/low` may be overridden per-task to match the env action dim.
+actor_args:
+  hidden_size: 256
+  n_layers: 2
+  noise_clip: 0.5
+  action_high: null
+  action_low: null
+

@@ -1,0 +1,37 @@
+# @package _global_
+defaults:
+  - /base_configs/maxAdv_dmc
+  - /oracles/dmc/acrobot_swingup_sparse
+  - _self_
+method_name: "Debug"
+
+
+seed: 42
+
+env:
+  domain_name: "acrobot"
+  task_name: "swingup_sparse"
+  render_size: [128,128]
+  n_sub_steps: 1
+  seed: ${seed}
+# Observation configuration (list shapes will be converted to tuples in code)
+obs_config:
+  orientations: [4]    # Joint angles
+  velocity: [2]      # Head height
+
+
+run_name: ${method_name}_${env.domain_name}_${env.task_name}_seed${seed}
+training:
+  # Oracle configuration
+  baseline_greedy_guided: true
+  n_oracles: 3
+
+
+  # Logging / runtime
+  save_video_every: 100000
+  use_wandb: true  # whether to use Weights & Biases for logging
+  use_compile: true
+  save_video: true  # Whether to save video
+  wandb_project_name: DMC
+
+  

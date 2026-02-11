@@ -1,0 +1,12 @@
+# @package _global_
+defaults:
+  - /base_configs/simba_weather
+  - _self_
+
+method_name: "Simba_Weather_Foggy"
+env:
+  mode: "Foggy"
+
+run_name: "${method_name}_seed${seed}"
+
+
