@@ -74,6 +74,7 @@ output_*.log
 outputs/
 *.sh
 !install.sh
+!setup_paths.sh
 viz_results/
 *.csv
 config/paths_local.yaml 
