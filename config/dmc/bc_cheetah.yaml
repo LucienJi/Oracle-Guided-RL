@@ -19,8 +19,8 @@ run_name: ${method_name}_${env.domain_name}_${env.task_name}_seed${seed}
 
 training:
   # Offline dataset location (must contain *.npz episodes)
-  replay_dir: "/share/data/ripl/jjt/projects/oracles/checkpoints/Baseline_Hopper_hopper_stand_seed0/replay_buffer"
-  expert_dir: "/share/data/ripl/jjt/projects/oracles/checkpoints/Baseline_Hopper_hopper_stand_seed0"
+  replay_dir: "./checkpoints/Baseline_Hopper_hopper_stand_seed0/replay_buffer"
+  expert_dir: "./checkpoints/Baseline_Hopper_hopper_stand_seed0"
 
   # Runtime knobs / logging
   use_compile: true
