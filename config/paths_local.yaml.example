@@ -1,0 +1,13 @@
+# @package _global_
+# Local path configuration (gitignored)
+# 
+# 使用方法:
+# 1. 复制此文件为 paths_local.yaml: cp paths_local.yaml.example paths_local.yaml
+# 2. 修改 project_root 为你的实际项目路径
+# 3. 或运行: bash setup_paths.sh (会自动创建此文件)
+#
+# 注意: paths_local.yaml 在 .gitignore 中，不会被提交到 git
+
+# 项目根目录 - 修改为你的实际路径
+project_root: /expanse/lustre/projects/chi157/jji3/Oracle-Guided-RL
+

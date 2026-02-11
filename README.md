@@ -45,7 +45,20 @@ bash setup_paths.sh
 
 ### EXPANSE HPC Cluster
 
-详细的 EXPANSE 安装指南请查看 [INSTALL_EXPANSE.md](INSTALL_EXPANSE.md)
+**快速设置（推荐）：**
+
+```bash
+# 在 EXPANSE 登录节点上
+cd /expanse/lustre/projects/chi157/jji3
+bash <(curl -s https://raw.githubusercontent.com/LucienJi/Oracle-Guided-RL/main/scripts/quick_setup_expanse.sh)
+# 或如果已克隆项目：
+cd Oracle-Guided-RL
+bash scripts/quick_setup_expanse.sh
+```
+
+**详细指南：**
+- 完整设置流程: [EXPANSE_SETUP.md](EXPANSE_SETUP.md)
+- 安装说明: [INSTALL_EXPANSE.md](INSTALL_EXPANSE.md)
 
 ## 项目结构
 
