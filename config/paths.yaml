@@ -1,0 +1,19 @@
+# @package _global_
+# Global path configuration
+# This file defines the project root directory
+# 
+# Usage in config files:
+#   defaults:
+#     - /paths
+#     - ...
+#   oracle_0: '${paths.project_root}/checkpoints/...'
+#
+# To override for your cluster:
+# 1. Run: bash setup_paths.sh (recommended - creates paths_local.yaml)
+# 2. Or set environment variable: export ORACLES_PROJECT_ROOT=/your/path
+# 3. Or manually create config/paths_local.yaml with: project_root: /your/path
+
+# Project root directory
+# Priority: paths_local.project_root > ORACLES_PROJECT_ROOT env var > current working directory
+# Note: paths_local.yaml is gitignored and created by setup_paths.sh
+project_root: ${oc.env:ORACLES_PROJECT_ROOT,${hydra:runtime.cwd}}

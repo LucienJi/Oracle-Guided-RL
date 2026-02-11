@@ -73,5 +73,7 @@ third_party/myosuite/
 output_*.log
 outputs/
 *.sh
+!install.sh
 viz_results/
 *.csv
+config/paths_local.yaml 
