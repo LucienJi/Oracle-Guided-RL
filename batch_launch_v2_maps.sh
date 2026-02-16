@@ -28,7 +28,7 @@ SPARSE_TASKS="hammer assembly drawer-open pick-place push-wall"
 # 6 seeds total: 2 jobs × 3 seeds each
 SEEDS_GROUP1="42 43 44"
 SEEDS_GROUP2="45 46 47"
-SEGMENTS="2"
+SEGMENTS="1"
 
 for task in "${tasks[@]}"; do
     EXTRA_ARGS=()
@@ -40,12 +40,12 @@ for task in "${tasks[@]}"; do
         --config-name "baselines_configs/maps/metaworld/${task}" \
         "${EXTRA_ARGS[@]}"
     sleep 1
-    echo "Submitting MAPS job 2/2 (seeds $SEEDS_GROUP2) for task: $task"
-    bash "$LAUNCH_SCRIPT" \
-        "baselines.train_maps" "$SEGMENTS" "$SEEDS_GROUP2" \
-        --config-name "baselines_configs/maps/metaworld/${task}" \
-        "${EXTRA_ARGS[@]}"
-    sleep 1
+    # echo "Submitting MAPS job 2/2 (seeds $SEEDS_GROUP2) for task: $task"
+    # bash "$LAUNCH_SCRIPT" \
+    #     "baselines.train_maps" "$SEGMENTS" "$SEEDS_GROUP2" \
+    #     --config-name "baselines_configs/maps/metaworld/${task}" \
+    #     "${EXTRA_ARGS[@]}"
+    # sleep 1
 done
 
 echo "Batch submission complete (MAPS)."
