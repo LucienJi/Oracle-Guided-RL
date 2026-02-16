@@ -20,13 +20,9 @@ NUM_TASKS=${#SEED_ARRAY[@]}
 
 # 动态计算 CPU 和 内存
 # 如果 packing 3个任务，就拿满 10 个 CPU
-if [ "$NUM_TASKS" -ge 3 ]; then
-    TOTAL_CPUS=10
-    TOTAL_MEM="80G"
-else
-    TOTAL_CPUS=$(( 4 * NUM_TASKS ))
-    TOTAL_MEM="$(( 20 * NUM_TASKS ))G"
-fi
+TOTAL_CPUS=10
+TOTAL_MEM="80G"
+
 
 # 基础设置（batch 脚本可 export JOB_NAME_PREFIX=算法名 来定制提交名）
 JOB_NAME="${JOB_NAME_PREFIX:-${MODULE_NAME}}_pack"

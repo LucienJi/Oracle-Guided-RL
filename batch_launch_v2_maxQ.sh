@@ -26,27 +26,34 @@ tasks=(
 # Tasks that require env.sparse_reward=true
 SPARSE_TASKS="hammer assembly drawer-open pick-place push-wall"
 
-# 6 seeds total: 2 jobs × 3 seeds each
-SEEDS_GROUP1="42 43 44"
-SEEDS_GROUP2="45 46 47"
+# 6 seeds total: 3 jobs × 2 seeds each
+SEEDS_GROUP1="42 43"
+SEEDS_GROUP2="44 45"
+SEEDS_GROUP3="46 47"
 SEGMENTS="1"
 
 for task in "${tasks[@]}"; do
     EXTRA_ARGS=(training.selection_mode=max_q)
     [[ " $SPARSE_TASKS " == *" $task "* ]] && EXTRA_ARGS+=(env.sparse_reward=true)
 
-    echo "Submitting maxQ job 1/2 (seeds $SEEDS_GROUP1) for task: $task"
+    echo "Submitting maxQ job 1/3 (seeds $SEEDS_GROUP1) for task: $task"
     bash "$LAUNCH_SCRIPT" \
         "baselines.train_maxVQ" "$SEGMENTS" "$SEEDS_GROUP1" \
         --config-name "baselines_configs/maxVQ/metaworld/${task}" \
         "${EXTRA_ARGS[@]}"
     sleep 1
-    # echo "Submitting maxQ job 2/2 (seeds $SEEDS_GROUP2) for task: $task"
-    # bash "$LAUNCH_SCRIPT" \
-    #     "baselines.train_maxVQ" "$SEGMENTS" "$SEEDS_GROUP2" \
-    #     --config-name "baselines_configs/maxVQ/metaworld/${task}" \
-    #     "${EXTRA_ARGS[@]}"
-    # sleep 1
+    echo "Submitting maxQ job 2/3 (seeds $SEEDS_GROUP2) for task: $task"
+    bash "$LAUNCH_SCRIPT" \
+        "baselines.train_maxVQ" "$SEGMENTS" "$SEEDS_GROUP2" \
+        --config-name "baselines_configs/maxVQ/metaworld/${task}" \
+        "${EXTRA_ARGS[@]}"
+    sleep 1
+    echo "Submitting maxQ job 3/3 (seeds $SEEDS_GROUP3) for task: $task"
+    bash "$LAUNCH_SCRIPT" \
+        "baselines.train_maxVQ" "$SEGMENTS" "$SEEDS_GROUP3" \
+        --config-name "baselines_configs/maxVQ/metaworld/${task}" \
+        "${EXTRA_ARGS[@]}"
+    sleep 1
 done
 
 echo "Batch submission complete (maxQ)."
