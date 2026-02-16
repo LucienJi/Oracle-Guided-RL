@@ -35,11 +35,11 @@ training:
   selection_mode: "max_v"  # "max_v" or "max_q"
   oracle_burnin_steps: 20000  # Random oracle selection for initial steps
 
-  learner_learning_starts: 36000
+  learner_learning_starts: 20000
   policy_delay: 2
   learner_critic_utd_ratio: 2
   learner_critic_batch_size: 1024
-  replay_ratio: 0.9
+  replay_ratio: 1.0
 
   # Normalization
   normalize_observations: true
@@ -70,8 +70,8 @@ training:
   task_specific_noise: 0.1
 
   # Evaluation / logging
-  eval_every: 10000
-  eval_episodes: 10
+  eval_every: 5000
+  eval_episodes: 5
   save_freq: 5000
   save_video: true
   save_video_every: 100000

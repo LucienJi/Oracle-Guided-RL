@@ -42,9 +42,13 @@ FINISH_X = TERRAIN_LENGTH * TERRAIN_STEP
 TOTAL_TERRAIN_X_MAX = TOTAL_TERRAIN_LENGTH * TERRAIN_STEP
 TIME_PENALTY = 0.01
 HEIGHT_CLIP = 5.0
-N_LIDAR_RAYS = 50
+N_LIDAR_RAYS = 20
 LIDAR_ANGLE_START = -0.5
 LIDAR_ANGLE_END = 1.5
+# No progress termination constants
+NO_PROGRESS_THRESHOLD_STEPS = 100  # Steps (10 seconds at 50 FPS) without progress
+NO_PROGRESS_DISTANCE = 1.0 / SCALE  # Minimum distance to count as progress
+NO_PROGRESS_PENALTY = -10.0  # Small penalty for no progress termination
 # --- Fixture Definitions ---
 HULL_FD = fixtureDef(
     shape=polygonShape(vertices=[(x / SCALE, y / SCALE) for x, y in HULL_POLY]),
@@ -424,6 +428,9 @@ class HybridBipedalWalker(gym.Env, EzPickle):
         self._generate_clouds()
 
         init_x = TERRAIN_STEP * TERRAIN_STARTPAD / 2
+        # No progress tracking
+        self.last_progress_x = init_x
+        self.no_progress_steps = 0
         init_y = TERRAIN_HEIGHT + 2 * LEG_H
         self.hull = self.world.CreateDynamicBody(position=(init_x, init_y), fixtures=HULL_FD)
         self.hull.color1 = (127, 51, 229)
@@ -572,6 +579,20 @@ class HybridBipedalWalker(gym.Env, EzPickle):
             reward += FINISH_BONUS
             terminated = True
             success = True
+        
+        # Check for no progress termination
+        if not terminated:
+            progress_distance = pos[0] - self.last_progress_x
+            if progress_distance >= NO_PROGRESS_DISTANCE:
+                # Made progress, reset counter and update last progress position
+                self.last_progress_x = pos[0]
+                self.no_progress_steps = 0
+            else:
+                # No progress, increment counter
+                self.no_progress_steps += 1
+                if self.no_progress_steps >= NO_PROGRESS_THRESHOLD_STEPS:
+                    reward += NO_PROGRESS_PENALTY
+                    terminated = True
 
         if self.render_mode == "human": self.render()
         return np.array(state, dtype=np.float32), reward, terminated, False, {"is_success": success}

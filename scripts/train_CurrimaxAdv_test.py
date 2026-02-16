@@ -37,7 +37,7 @@ from data_buffer.replay_buffer import (
 
 
 
-@hydra.main(config_path="../config", config_name="box2d/CurrimaxAdv_weather_learner", version_base=None)
+@hydra.main(config_path="../config", config_name="metaworld/CurrimaxAdv_assembly", version_base=None)
 def train_CurrimaxAdv(cfg: DictConfig):
     from algo.oracles.CurrimaxAdv_test import CurrMaxAdv
 

@@ -19,7 +19,7 @@ from env.env_utils import (
 from data_buffer.replay_buffer import ReplayBuffer
 
 
-@hydra.main(config_path="../../config", config_name="baselines_configs/qmix_cartpole", version_base=None)
+@hydra.main(config_path="../../config", config_name="baselines_configs/qmix/cartpole/qmix_cartpole", version_base=None)
 def train_qmix(cfg: DictConfig):
     from algo.baselines.qmix import QMPAlgo
 
@@ -62,8 +62,8 @@ def train_qmix(cfg: DictConfig):
         or cfg.get("mlp_based_oracle_args", None)
     )
     default_oracle_critic_args = (
-        cfg.get("oracle_critic_args", None),
-        cfg.get("rl_critic_args", None)
+        cfg.get("oracle_critic_args", None)
+        or cfg.get("rl_critic_args", None)
     )
 
     oracles_actors = {}

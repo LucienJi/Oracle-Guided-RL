@@ -1,6 +1,7 @@
 # @package _global_
 # Base Adaptive Configuration for DMC Environments
 defaults:
+  - /paths
   - /oracles/simba_based_oracle_args
   - /oracles/mlp_based_oracle_args
 
@@ -44,11 +45,11 @@ training:
   learner_critic_batch_size: 1024
   
   # Exploration strategy parameters
-  replay_ratio: 0.9
+  replay_ratio: 0.1
   num_proposals: 5
   kappa: 1.0
   # Actor loss weights
-  l1_loss_weight: 1.0
+  l1_loss_weight: 0.1
   rl_loss_weight: 1.0
   use_adaptive_actor_loss_weight: false
   
@@ -96,8 +97,8 @@ training:
   policy_max_grad_norm: 1.0
   
   # Evaluation and logging
-  eval_every: 10000
-  eval_episodes: 10
+  eval_every: 5000
+  eval_episodes: 5
   save_video_every: 10000
   save_freq: 1000
   save_video_fps: ${save_video_fps}

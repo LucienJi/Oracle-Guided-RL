@@ -11,7 +11,7 @@ env:
   seed: ${seed}
 
 obs_config:
-  state: [256]
+  state: [136]
 
 run_name: "${method_name}_seed${seed}"
 
@@ -39,7 +39,7 @@ training:
   
   ## Policy parameters
   max_exploration_std: 0.3
-  min_exploration_std: 0.05
+  min_exploration_std: 0.1
   exploration_decay_steps: 2000000
   target_policy_std: 0.2
   policy_delay: 2
@@ -65,8 +65,8 @@ training:
   use_compile: true
   
   # Evaluation and logging parameters
-  eval_every: 10000
-  eval_episodes: 10
+  eval_every: 5000
+  eval_episodes: 5
   save_video_every: 100000
   save_freq: 1000
   save_video_fps: 30

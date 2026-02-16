@@ -58,13 +58,13 @@ training:
   use_compile: true  # torch.compile for faster training
   
   # Evaluation and logging parameters
-  eval_every: 10000
-  eval_episodes: 10
+  eval_every: 5000
+  eval_episodes: 5
   save_video_every: 100000
   save_freq: 1000
   save_video_fps: 30
   resume: true
-  use_wandb: false
+  use_wandb: true
   save_video: true
   wandb_project_name: "DMC"
   wandb_entity: 'jingtianji'

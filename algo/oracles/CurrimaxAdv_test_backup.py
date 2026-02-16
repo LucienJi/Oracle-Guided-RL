@@ -261,6 +261,51 @@ class CurrMaxAdv(BaseAlgo):
             return fn
 
     # -----------------------
+    # Logging helpers
+    # -----------------------
+    @staticmethod
+    def _entropy_from_log_probs(log_probs: torch.Tensor) -> torch.Tensor:
+        """Compute mean entropy from log-probabilities (B, num_bins)."""
+        probs = torch.exp(log_probs)
+        entropy = -torch.sum(probs * log_probs, dim=-1)
+        return entropy.mean()
+
+    @staticmethod
+    def _grad_norm_from_grads(grads: List[Optional[torch.Tensor]]) -> float:
+        total = 0.0
+        for g in grads:
+            if g is None:
+                continue
+            total += float(g.detach().pow(2).sum())
+        return float(math.sqrt(total))
+
+    @staticmethod
+    def _flatten_grads(grads: List[Optional[torch.Tensor]]) -> Optional[torch.Tensor]:
+        flat = [g.detach().reshape(-1) for g in grads if g is not None]
+        if not flat:
+            return None
+        return torch.cat(flat, dim=0)
+
+    def _grad_stats_for_loss(self, loss: torch.Tensor, params: List[torch.nn.Parameter]):
+        grads = torch.autograd.grad(loss, params, retain_graph=True, allow_unused=True)
+        norm = self._grad_norm_from_grads(grads)
+        flat = self._flatten_grads(grads)
+        return norm, flat
+
+    @staticmethod
+    def _batch_reward_stats(prefix: str, data: dict) -> dict:
+        if "rewards" not in data:
+            return {}
+        rewards = data["rewards"]
+        stats = {
+            f"{prefix}/reward_mean": rewards.mean().item(),
+            f"{prefix}/reward_std": rewards.std().item(),
+            f"{prefix}/reward_min": rewards.min().item(),
+            f"{prefix}/reward_max": rewards.max().item(),
+        }
+        return stats
+   
+    # -----------------------
     # Noise / temperature schedules
     # -----------------------
     def get_action_noise(self, global_step: int, max_steps: int, min_noise: float, max_noise: float) -> float:
@@ -781,6 +826,22 @@ class CurrMaxAdv(BaseAlgo):
             if do_log:
                 info_payload = train_info or {}
                 info_payload["time/total_timesteps"] = self.global_step
+                if self.normalize_rewards and self.reward_normalizer is not None:
+                    g_rms = self.reward_normalizer.G_rms
+                    g_mean = float(g_rms.mean[0]) if isinstance(g_rms.mean, np.ndarray) else float(g_rms.mean)
+                    g_var = float(g_rms.var[0]) if isinstance(g_rms.var, np.ndarray) else float(g_rms.var)
+                    g_std = float(math.sqrt(max(g_var, 0.0)))
+                    info_payload.update(
+                        {
+                            "reward_norm/G": float(self.reward_normalizer.G),
+                            "reward_norm/G_mean": g_mean,
+                            "reward_norm/G_std": g_std,
+                            "reward_norm/G_var": g_var,
+                            "reward_norm/G_r_max": float(self.reward_normalizer.G_r_max),
+                            "reward_norm/denominator": float(self.reward_normalizer.denominator()),
+                            "reward_norm/count": float(g_rms.count),
+                        }
+                    )
                 if self.global_step % 500 == 0 and len(self.action_selection_buffer) > self.learner_learning_starts: 
                     arr = np.array(self.action_selection_buffer, dtype=int)
                     info_payload["env/learner_selected"] = float((arr == 0).mean())
@@ -921,8 +982,11 @@ class CurrMaxAdv(BaseAlgo):
             self.oracles_value_optimizers[name].zero_grad(set_to_none=True)
         total_loss = q_loss + v_loss
         total_loss.backward()
-        nn.utils.clip_grad_norm_(self.learner_critic.parameters(), self.args["max_grad_norm"])
-        nn.utils.clip_grad_norm_(self.learner_value.parameters(), self.args["max_grad_norm"])
+        info.update(self._batch_reward_stats("batch/critic/learner", learner_data))
+        learner_critic_gn = nn.utils.clip_grad_norm_(self.learner_critic.parameters(), self.args["max_grad_norm"])
+        learner_value_gn = nn.utils.clip_grad_norm_(self.learner_value.parameters(), self.args["max_grad_norm"])
+        info["grad/learner_critic_norm"] = float(learner_critic_gn)
+        info["grad/learner_value_norm"] = float(learner_value_gn)
         self.critic_optimizer.step()
         self.value_optimizer.step()
         # L2 normalize after update (SIMBA-style)
@@ -930,8 +994,11 @@ class CurrMaxAdv(BaseAlgo):
         l2normalize_network(self.learner_value)
         
         for name in self.oracles_names:
-            nn.utils.clip_grad_norm_(self.oracles_critics[name].parameters(), self.args["max_grad_norm"])
-            nn.utils.clip_grad_norm_(self.oracles_values[name].parameters(), self.args["max_grad_norm"])
+            info.update(self._batch_reward_stats(f"batch/critic/{name}", oracle_data_by_name[name]))
+            orc_critic_gn = nn.utils.clip_grad_norm_(self.oracles_critics[name].parameters(), self.args["max_grad_norm"])
+            orc_value_gn = nn.utils.clip_grad_norm_(self.oracles_values[name].parameters(), self.args["max_grad_norm"])
+            info[f"grad/oracles/{name}/critic_norm"] = float(orc_critic_gn)
+            info[f"grad/oracles/{name}/value_norm"] = float(orc_value_gn)
             self.oracles_critic_optimizers[name].step()
             self.oracles_value_optimizers[name].step()
             l2normalize_network(self.oracles_critics[name])
@@ -943,7 +1010,7 @@ class CurrMaxAdv(BaseAlgo):
         info = {}
         total_q_loss = 0.0
         total_v_loss = 0.0
-        q_loss, v_loss, q_mean, v_mean, q_uncertainty = self._compiled_compute_learner_critic_loss(learner_data)
+        q_loss, v_loss, q_mean, v_mean, q_uncertainty, q_entropy, v_entropy = self._compiled_compute_learner_critic_loss(learner_data)
         total_q_loss += q_loss
         total_v_loss += v_loss
         info.update({
@@ -952,10 +1019,12 @@ class CurrMaxAdv(BaseAlgo):
             "learner/values/qf_mean": q_mean.item(),
             "learner/values/vf_mean": v_mean.item(),
             "learner/values/qf_uncertainty": q_uncertainty.item(),
+            "learner/values/q_entropy": q_entropy.item(),
+            "learner/values/v_entropy": v_entropy.item(),
         })
         ## oracles part
         for name in self.oracles_names:
-            q_loss, v_loss, q_mean, v_mean, q_uncertainty = self._compiled_compute_oracles_critic_loss(oracle_data_by_name[name], name)
+            q_loss, v_loss, q_mean, v_mean, q_uncertainty, q_entropy, v_entropy = self._compiled_compute_oracles_critic_loss(oracle_data_by_name[name], name)
             total_q_loss += q_loss
             total_v_loss += v_loss
             info.update(
@@ -965,6 +1034,8 @@ class CurrMaxAdv(BaseAlgo):
                         f"oracles/{name}/qf_mean": q_mean.item(),
                         f"oracles/{name}/vf_mean": v_mean.item(),
                         f"oracles/{name}/qf_uncertainty": q_uncertainty.item(),
+                        f"oracles/{name}/q_entropy": q_entropy.item(),
+                        f"oracles/{name}/v_entropy": v_entropy.item(),
                     }
                 )
         return total_q_loss, total_v_loss, info
@@ -1042,7 +1113,9 @@ class CurrMaxAdv(BaseAlgo):
             )
             v_loss = v_loss + loss.mean()
         oracle_critic_values = pred_v.mean()
-        return q_loss, v_loss, q_mean, oracle_critic_values.mean(), q_uncertainty.mean()
+        q_entropy = torch.stack([self._entropy_from_log_probs(info["log_prob"]) for info in pred_q_infos]).mean()
+        v_entropy = torch.stack([self._entropy_from_log_probs(info["log_prob"]) for info in pred_v_infos]).mean()
+        return q_loss, v_loss, q_mean, oracle_critic_values.mean(), q_uncertainty.mean(), q_entropy, v_entropy
     
     def _compute_learner_critic_loss(self, data: dict):
         """Compute categorical TD loss for critic (SIMBA-style)."""
@@ -1113,7 +1186,9 @@ class CurrMaxAdv(BaseAlgo):
             )
             v_loss = v_loss + loss.mean()
         v_values = pred_v.mean()
-        return q_loss, v_loss, q_mean, v_values.mean(), q_uncertainty
+        q_entropy = torch.stack([self._entropy_from_log_probs(info["log_prob"]) for info in pred_q_infos]).mean()
+        v_entropy = torch.stack([self._entropy_from_log_probs(info["log_prob"]) for info in pred_v_infos]).mean()
+        return q_loss, v_loss, q_mean, v_values.mean(), q_uncertainty, q_entropy, v_entropy
         
     # Update learner actor 
     
@@ -1233,9 +1308,18 @@ class CurrMaxAdv(BaseAlgo):
         # Backprop once on a combined loss to avoid double-backward through shared graphs
         self.actor_optimizer.zero_grad(set_to_none=True)
         weights = self.get_actor_loss_weight()
+        actor_params = [p for p in self.learner_actor.parameters() if p.requires_grad]
+        awbc_gn, awbc_flat = self._grad_stats_for_loss(awbc_loss, actor_params)
+        rl_gn, rl_flat = self._grad_stats_for_loss(rl_loss, actor_params)
+        if awbc_flat is not None and rl_flat is not None:
+            dot = float(torch.dot(awbc_flat, rl_flat))
+            denom = float(awbc_flat.norm() * rl_flat.norm() + EPS)
+            cosine = dot / denom
+        else:
+            cosine = 0.0
         total_actor_loss = rl_loss * weights['rl_weight'] + awbc_loss * weights['bc_weight']
         total_actor_loss.backward()
-        nn.utils.clip_grad_norm_(self.learner_actor.parameters(), self.args["policy_max_grad_norm"])
+        actor_gn = nn.utils.clip_grad_norm_(self.learner_actor.parameters(), self.args["policy_max_grad_norm"])
         self.actor_optimizer.step()
         
         # L2 normalize after update (SIMBA-style)
@@ -1249,7 +1333,12 @@ class CurrMaxAdv(BaseAlgo):
             "learner/losses/bc_weight": weights['bc_weight'],
             "learner/losses/maxadv_weight": actor_weight.item(),
             "learner/losses/positive_ratio": weight_positive_ratio.item(),
+            "grad/learner_actor_norm": float(actor_gn),
+            "grad/learner_actor_awbc_norm": float(awbc_gn),
+            "grad/learner_actor_rl_norm": float(rl_gn),
+            "grad/learner_actor_loss_cosine": float(cosine),
         }
+        actor_info.update(self._batch_reward_stats("batch/policy", data))
         return actor_info
 
     

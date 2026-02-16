@@ -32,10 +32,10 @@ training:
 
   # MAPS specific parameters
   maps_beta: 3.0  # UCB exploration coefficient
-  roll_in_max_k: 1000  # Maximum roll-in steps (uniformly sampled from [0, k])
-  per_oracle_explore_steps: 12000  # Steps per oracle/learner during cycling exploration
+  roll_in_max_k: 400  # Maximum roll-in steps (uniformly sampled from [0, k])
+  per_oracle_explore_steps: 5000  # Steps per oracle/learner during cycling exploration
 
-  learner_learning_starts: 36000
+  learner_learning_starts: 20000
   learner_critic_utd_ratio: 2
   learner_critic_batch_size: 1024
   policy_delay: 1
@@ -71,8 +71,8 @@ training:
   policy_max_grad_norm: 1.0
 
   # Evaluation / logging
-  eval_every: 10000
-  eval_episodes: 10
+  eval_every: 5000
+  eval_episodes: 5
   save_freq: 5000
   save_video: true
   save_video_every: 100000

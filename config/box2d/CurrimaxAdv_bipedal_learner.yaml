@@ -7,15 +7,7 @@ defaults:
 method_name: "CurrimaxAdv_Bipedal_Learner_DEBUG"
 seed: 42
 
-env:
-  env_name: "bipedal"
-  mode: "learner"
-  stack_frames: 4
-  max_steps: 1500
-  seed: ${seed}
 
-obs_config:
-  state: [256]
 
 run_name: ${method_name}_${env.env_name}_${env.mode}_seed${seed}
 

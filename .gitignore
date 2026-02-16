@@ -78,3 +78,8 @@ outputs/
 viz_results/
 *.csv
 config/paths_local.yaml 
+videos/
+test_mw.py
+test.py
+test2.py
+debug_videos/

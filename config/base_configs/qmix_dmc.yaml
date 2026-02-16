@@ -1,6 +1,7 @@
 # @package _global_
 # Base QMP (Q-switch Mixture of Policies) config for DMC multi-task DDPG.
 defaults:
+  - /paths
   - /oracles/simba_based_oracle_args
   - /oracles/mlp_based_oracle_args
 
@@ -63,7 +64,7 @@ training:
   critic_weight_decay: 1e-4
   max_grad_norm: 1.0
 
-  eval_every: 10000
+  eval_every: 5000
   eval_episodes: 5
   save_freq: 20000
   save_video: true

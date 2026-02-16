@@ -33,7 +33,7 @@ training:
   save_episodes_to_disk: true
 
   # LOKI phases / DDPG
-  learning_starts: 36000
+  learning_starts: 20000
   learner_critic_utd_ratio: 2
   learner_critic_batch_size: 1024
   min_exploration_noise: 0.01
@@ -58,8 +58,8 @@ training:
   max_grad_norm: 1.0
 
   # Evaluation / logging
-  eval_every: 10000
-  eval_episodes: 10
+  eval_every: 5000
+  eval_episodes: 5
   save_freq: 5000
   save_video: true
   save_video_every: 100000

@@ -18,7 +18,7 @@ from data_buffer.replay_buffer import ReplayBuffer
 
 
 
-@hydra.main(config_path="../config", config_name="dmc/simba_cartpole_sparse", version_base=None)
+@hydra.main(config_path="../config", config_name="box2d/simba_bipedal_learner", version_base=None)
 def train_simba(cfg: DictConfig):
     from algo.baselines.simba import SIMBA
     # Device

@@ -25,10 +25,11 @@ training:
   total_timesteps: 5000000
   capacity: 5000000
   exploration_decay_steps: 5000000
-  max_exploration_std: 0.35
-  min_exploration_std: 0.01
+  batch_size: 1024
+  max_exploration_std: 0.25
+  min_exploration_std: 0.05
   save_video_every: 500000
-  eval_every: 10000  # How often to evaluate the policy (steps)
+  eval_every: 20000  # How often to evaluate the policy (steps)
   save_freq: 1000  # How often to save checkpoints (steps)
   resume: true  # Whether to resume from a checkpoint
   use_wandb: true  # whether to use Weights & Biases for logging

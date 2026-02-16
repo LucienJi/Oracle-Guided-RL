@@ -21,7 +21,8 @@ class SawyerDrawerOpenOraclePolicy(TorchBaseOraclePolicy):
         desired_pos, stage_id, p = self._desired_pos_with_p(o_d)
         grab_effort = self._grab_effort(o_d)
         desired_pos = self._maybe_add_noise(desired_pos, o_d["hand_pos"], stage_id)
-        delta = self._clip_delta_pos(self._move(o_d["hand_pos"], desired_pos, p=p))
+        # p is (batch_size,); make it (batch_size, 1) so (batch_size, 3) * p broadcasts
+        delta = self._clip_delta_pos(self._move(o_d["hand_pos"], desired_pos, p=p.unsqueeze(-1)))
         return self._action(delta, grab_effort)
 
     def _desired_pos_with_p(self, o_d: dict[str, torch.Tensor]) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:

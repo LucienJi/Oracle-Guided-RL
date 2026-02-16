@@ -35,7 +35,7 @@ training:
   task_specific_noise: 0.1
 
   # QMP specific parameters
-  learner_learning_starts: 36000
+  learner_learning_starts: 20000
   learner_critic_utd_ratio: 2
   learner_critic_batch_size: 1024
   policy_delay: 2
@@ -69,7 +69,7 @@ training:
   critic_weight_decay: 1e-4
   max_grad_norm: 1.0
 
-  eval_every: 20000
+  eval_every: 5000
   eval_episodes: 5
   save_freq: 20000
   save_video: true
