@@ -7,6 +7,7 @@ LAUNCH_SCRIPT="$SCRIPT_DIR/launch_train_v2.sh"
 export ACCOUNT="chi157"
 export PARTITION="gpu-shared"
 export TIME="1:00:00"
+export JOB_NAME_PREFIX="maxV"
 
 # MetaWorld tasks from config/oracles/metaworld/
 tasks=(

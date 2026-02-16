@@ -28,8 +28,8 @@ else
     TOTAL_MEM="$(( 20 * NUM_TASKS ))G"
 fi
 
-# 基础设置
-JOB_NAME="${MODULE_NAME}_pack"
+# 基础设置（batch 脚本可 export JOB_NAME_PREFIX=算法名 来定制提交名）
+JOB_NAME="${JOB_NAME_PREFIX:-${MODULE_NAME}}_pack"
 ACCOUNT="${ACCOUNT:-chi157}"
 PARTITION="${PARTITION:-gpu-shared}"
 TIME="${TIME:-01:00:00}" # 建议设置为 4 小时或 10 小时，根据你的 Checkpoint 频率
