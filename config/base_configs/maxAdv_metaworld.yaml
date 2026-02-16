@@ -54,7 +54,7 @@ training:
   compile_env_interaction: false
   kappa: 3.0
   # Actor loss weights
-  l1_loss_weight: 1.0
+  l1_loss_weight: 0.1
   rl_loss_weight: 1.0
   use_adaptive_actor_loss_weight: false
   
@@ -74,7 +74,7 @@ training:
   task_specific_noise: 0.05
   clip_noise: 0.2
   beta: 1.0
-  replay_ratio: 0.9
+  replay_ratio: 0.1
 
   ## Normalization parameters
   normalize_observations: true

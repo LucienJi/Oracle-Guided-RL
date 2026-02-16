@@ -11,30 +11,38 @@ export TIME="1:00:00"
 # MetaWorld tasks from config/oracles/metaworld/
 tasks=(
     assembly
-    basketball
-    drawer-open
-    hammer
-    lever-pull
-    peg-insert-side
-    peg-unplug-side
-    pick-place
-    push-wall
-    stick-pull
+    # basketball
+    # drawer-open
+    # hammer
+    # lever-pull
+    # peg-insert-side
+    # peg-unplug-side
+    # pick-place
+    # push-wall
+    # stick-pull
 )
 
 # Tasks that require env.sparse_reward=true
 SPARSE_TASKS="hammer assembly drawer-open pick-place push-wall"
 
-SEEDS_GROUP="42 43 44"
+# 6 seeds total: 2 jobs × 3 seeds each
+SEEDS_GROUP1="42 43 44"
+SEEDS_GROUP2="45 46 47"
 SEGMENTS="2"
 
 for task in "${tasks[@]}"; do
     EXTRA_ARGS=()
     [[ " $SPARSE_TASKS " == *" $task "* ]] && EXTRA_ARGS+=(env.sparse_reward=true)
 
-    echo "Submitting LOKI job for task: $task"
+    echo "Submitting LOKI job 1/2 (seeds $SEEDS_GROUP1) for task: $task"
     bash "$LAUNCH_SCRIPT" \
-        "baselines.train_loki" "$SEGMENTS" "$SEEDS_GROUP" \
+        "baselines.train_loki" "$SEGMENTS" "$SEEDS_GROUP1" \
+        --config-name "baselines_configs/loki/metaworld/${task}" \
+        "${EXTRA_ARGS[@]}"
+    sleep 1
+    echo "Submitting LOKI job 2/2 (seeds $SEEDS_GROUP2) for task: $task"
+    bash "$LAUNCH_SCRIPT" \
+        "baselines.train_loki" "$SEGMENTS" "$SEEDS_GROUP2" \
         --config-name "baselines_configs/loki/metaworld/${task}" \
         "${EXTRA_ARGS[@]}"
     sleep 1

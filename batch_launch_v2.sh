@@ -13,18 +13,22 @@ tasks=(
     # acrobot_sparse
 )
 
-# 💡 定义你想一起跑的种子组
-# 这里我们将 42, 43, 44 打包成一组
-SEEDS_GROUP="42 43 44"
+# 💡 6 seeds total: 2 jobs × 3 seeds each
+SEEDS_GROUP1="42 43 44"
+SEEDS_GROUP2="45 46 47"
 
 for task in "${tasks[@]}"; do
     method_suffix="simba_${task}"
     
-    echo "📦 Submitting Packed Job for task: $task"
-    # 调用 V2 launcher
-    # 注意参数顺序：模块名 -> 段数(1) -> 种子列表 -> Python参数
+    echo "📦 Submitting Packed Job 1/2 (seeds $SEEDS_GROUP1) for task: $task"
     bash "$LAUNCH_SCRIPT" \
-        "train_simba" "2" "$SEEDS_GROUP" \
+        "train_simba" "2" "$SEEDS_GROUP1" \
+        --config-name "dmc/simba_${task}" \
+        method_name="${method_suffix}_expanse_debug"
+    sleep 1
+    echo "📦 Submitting Packed Job 2/2 (seeds $SEEDS_GROUP2) for task: $task"
+    bash "$LAUNCH_SCRIPT" \
+        "train_simba" "2" "$SEEDS_GROUP2" \
         --config-name "dmc/simba_${task}" \
         method_name="${method_suffix}_expanse_debug"
     sleep 1
