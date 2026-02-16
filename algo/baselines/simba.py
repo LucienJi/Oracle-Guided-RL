@@ -197,7 +197,13 @@ class SIMBA(BaseAlgo):
             # next_qs: [num_qs, B, 1]
             min_idx = next_qs.squeeze(-1).argmin(dim=0)  # (B,)
             stacked_log_probs = torch.stack([info["log_prob"] for info in next_q_infos], dim=0)
-            next_q_log_probs = stacked_log_probs[min_idx, torch.arange(min_idx.shape[0], device=self.device)]
+            # Use gather instead of advanced indexing for torch.compile compatibility
+            # stacked_log_probs: [num_qs, B, num_bins], min_idx: [B]
+            # Gather along dim=0: need index shape [1, B, num_bins] to match gather semantics
+            # Use self.num_bins (constant) instead of shape to avoid symbol expression issues in torch.compile
+            # expand with -1 is safe as it preserves the dimension size
+            min_idx_expanded = min_idx.view(1, -1, 1).expand(1, -1, self.num_bins)  # [1, B, num_bins]
+            next_q_log_probs = torch.gather(stacked_log_probs, dim=0, index=min_idx_expanded).squeeze(0)  # [B, num_bins]
 
         pred_qs, pred_q_infos = self.rl_critic.get_value_with_info(data["observations"], data["actions"])
         gamma_n = self.gamma ** self.args["nstep"]

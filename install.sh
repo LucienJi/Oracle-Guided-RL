@@ -29,12 +29,12 @@ echo "步骤 2/5: 激活环境并安装第三方库..."
 echo "----------------------------------------"
 
 # 激活 conda 环境（在脚本中需要使用 conda run）
-echo "安装 CARL..."
-cd third_party/CARL
-conda run -n oracles pip install -e . > /dev/null 2>&1 || {
-    echo "警告: CARL 安装可能失败，请手动检查"
-}
-cd "$SCRIPT_DIR"
+#echo "安装 CARL..."
+#cd third_party/CARL
+#conda run -n oracles pip install -e . > /dev/null 2>&1 || {
+#    echo "警告: CARL 安装可能失败，请手动检查"
+#}
+#cd "$SCRIPT_DIR"
 
 echo "安装 Metaworld..."
 cd third_party/Metaworld
@@ -43,19 +43,19 @@ conda run -n oracles pip install -e . > /dev/null 2>&1 || {
 }
 cd "$SCRIPT_DIR"
 
-echo "安装 HighwayEnv..."
-cd third_party/HighwayEnv
-conda run -n oracles pip install -e . > /dev/null 2>&1 || {
-    echo "警告: HighwayEnv 安装可能失败，请手动检查"
-}
-cd "$SCRIPT_DIR"
+#echo "安装 HighwayEnv..."
+#cd third_party/HighwayEnv
+#conda run -n oracles pip install -e . > /dev/null 2>&1 || {
+#    echo "警告: HighwayEnv 安装可能失败，请手动检查"
+#}
+#cd "$SCRIPT_DIR"
 
-echo "安装 MyoSuite..."
-cd third_party/myosuite
-conda run -n oracles pip install -e . > /dev/null 2>&1 || {
-    echo "警告: MyoSuite 安装可能失败，请手动检查"
-}
-cd "$SCRIPT_DIR"
+#echo "安装 MyoSuite..."
+#cd third_party/myosuite
+#conda run -n oracles pip install -e . > /dev/null 2>&1 || {
+#    echo "警告: MyoSuite 安装可能失败，请手动检查"
+#}
+#cd "$SCRIPT_DIR"
 
 echo ""
 echo "步骤 3/5: 验证安装..."
@@ -67,8 +67,8 @@ conda run -n oracles python -c "import torch; print(f'✓ CUDA available: {torch
 conda run -n oracles python -c "import gymnasium; print(f'✓ Gymnasium: {gymnasium.__version__}')" || echo "✗ Gymnasium 未正确安装"
 conda run -n oracles python -c "import dm_control; print('✓ dm-control installed')" || echo "✗ dm-control 未正确安装"
 conda run -n oracles python -c "import metaworld; print('✓ Metaworld installed')" || echo "✗ Metaworld 未正确安装"
-conda run -n oracles python -c "import highway_env; print('✓ HighwayEnv installed')" || echo "✗ HighwayEnv 未正确安装"
-conda run -n oracles python -c "import carl; print('✓ CARL installed')" || echo "✗ CARL 未正确安装"
+#conda run -n oracles python -c "import highway_env; print('✓ HighwayEnv installed')" || echo "✗ HighwayEnv 未正确安装"
+#conda run -n oracles python -c "import carl; print('✓ CARL installed')" || echo "✗ CARL 未正确安装"
 
 echo ""
 echo "步骤 4/5: 设置环境变量..."

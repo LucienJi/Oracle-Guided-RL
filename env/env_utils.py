@@ -5,9 +5,7 @@ import numpy as np
 import torch
 import random
 import metaworld
-import highway_env
 import cv2
-from myosuite.renderer.mj_renderer import MJRenderer
 from typing import Optional, Tuple, Dict, Any, Literal
 import numpy as np
 import gymnasium as gym
@@ -250,225 +248,6 @@ class MetaworldWrapper(gym.Wrapper):
     def render(self):
         image = self.env.render()
         return image[::-1, :, :]
-
-
-def make_myosuite_env(env_name,obs_config,seed=0,is_sparse_reward = False,camera_id_render = 4, camera_size = (256,256)):
-    from myosuite.utils import gym as myosuite_gym
-    env = myosuite_gym.make(env_name,seed=seed)
-    env = MyoSuiteWrapper(env,obs_config,is_sparse_reward,camera_id_render, camera_size)
-    env = gym.wrappers.RecordEpisodeStatistics(env)
-    return env
-
-class MyoSuiteWrapper(gym.Wrapper):
-    def __init__(self,env,obs_config,is_sparse_reward = False,camera_id_render = 4, camera_size = (256,256)):
-        super().__init__(env)
-        self.obs_config = obs_config
-        self.action_space = env.action_space
-        self.env_category = 'myosuite'
-        self.is_sparse_reward = is_sparse_reward
-        self.camera_id_render = camera_id_render
-        self.camera_size = camera_size
-        self.renderer = MJRenderer(env.unwrapped.sim)
-                
-    def _parse_obs(self,obs):
-        final_obs = []
-        for k in self.obs_config.keys():
-            final_obs.append(obs[k])
-        final_obs = np.concatenate(final_obs, axis=0)
-        return final_obs
-    def step(self,action):
-        obs,reward,done,truncated,info = self.env.step(action)
-        if self.is_sparse_reward:
-            reward = info['rwd_sparse']
-        else:
-            reward = info['rwd_dense']
-        obs = self._parse_obs(obs)
-        done = done or info['solved']
-        done = bool(done)
-        truncated = bool(truncated)
-        info['is_success'] = info['solved']
-        
-        return obs,reward,done,truncated,info
-    def reset(self,seed=None,options=None):
-        obs,info = self.env.reset()
-        obs = self._parse_obs(obs)
-        return obs,info
-    def close(self):
-        self.env.close()
-    
-    def render(self):
-        image = self.renderer.render_offscreen(width=self.camera_size[0], height=self.camera_size[1],camera_id=self.camera_id_render)
-        return image
-    
-
-class HighwayEnvWrapper(gym.Wrapper):
-    def __init__(self,env,obs_config,flatten_obs = False):
-        super().__init__(env)
-        self.flatten_obs = flatten_obs
-        self.obs_config = obs_config
-        self.action_space = env.action_space
-        self.env_category = 'highway'
-        self.max_steps = int(self.unwrapped.config['duration'] *  self.unwrapped.config["policy_frequency"])
-        print("MAX STEPS", self.max_steps)
-    def step(self,action):
-        obs,reward,done,truncated,info = self.env.step(action)
-        info['is_success'] = info['rewards']['goal'] > 0.0 
-        obs_dict = {}
-        obs_dict['robot_states'] = obs if not self.flatten_obs else obs.reshape(-1)
-        return obs_dict,reward,done,truncated,info
-    def reset(self,seed=None,options=None):
-        obs,info = self.env.reset(seed=seed,options=options)
-        obs_dict = {}
-        obs_dict['robot_states'] = obs if not self.flatten_obs else obs.reshape(-1)
-        return obs_dict,info
-    def close(self):
-        self.env.close()
-    def render(self):
-        return self.env.render()
-
-
-class HighwayWeatherWrapper(gym.Wrapper):
-    CLEAR = 0
-    RAINY = 1
-    FOGGY = 2
-    SNOWY = 3
-    WEATHER_TYPES = [CLEAR, RAINY, FOGGY, SNOWY]
-    DURATION_RANGE = {
-        CLEAR: (100, 200),
-        RAINY: (50, 150),
-        FOGGY: (50, 150),
-        SNOWY: (30, 100),
-    }
-    WEATHER_COLORS = {
-        CLEAR: (0, 255, 0),
-        RAINY: (255, 0, 0),
-        FOGGY: (192, 192, 192),
-        SNOWY: (255, 255, 255)
-    }
-    WEATHER_NAMES = {
-        CLEAR: 'CLEAR',
-        RAINY: 'RAINY',
-        FOGGY: 'FOGGY',
-        SNOWY: 'SNOWY'
-    }
-    def __init__(self,env,weather_probs = None):
-        super().__init__(env)
-        self.action_space = env.action_space
-        self.env_category = 'highway'
-        self.max_steps = int(self.unwrapped.config['duration'] *  self.unwrapped.config["policy_frequency"])
-        print("MAX STEPS", self.max_steps)
-        self.current_weather = self.CLEAR
-        if weather_probs is None:
-            self.weather_probs = [1.0, 0.0, 0.0, 0.0]
-        else:
-            self.weather_probs = np.array(weather_probs)
-            self.weather_probs = self.weather_probs / self.weather_probs.sum()
-    
-    def _parse_obs(self,obs):
-        # we should encode the weather type as one-hot vector
-        weather_type_one_hot = np.zeros(len(self.WEATHER_TYPES))
-        weather_type_one_hot[self.current_weather] = 1
-        obs = np.concatenate([weather_type_one_hot, obs.reshape(-1)], axis=0)
-        return obs
-        
-        
-    def step(self,action):
-        """
-        Similar to the reset step, we first change the perception, so that the observation could be changed.
-        but the step will call the transition function, where it should not change since the action is conditioned on the previous observation
-        """
-        if self.steps_remaining <= 0:
-            self._sample_new_weather() 
-            self._set_perception_distance(self.current_weather)
-        obs,reward,done,truncated,info = self.env.step(action)
-        self._set_friction(self.current_weather) 
-        self.steps_remaining -= 1 
-        if 'goal' in info['rewards']:
-            info['is_success'] = info['rewards']['goal'] > 0.0 
-        else:
-            info['is_success'] = False
-        
-        info['current_weather'] = self.current_weather
-        obs = self._parse_obs(obs)
-        return obs,reward,done,truncated,info
-    def reset(self,seed=None,options=None):
-        self._sample_new_weather() 
-        self._set_perception_distance(self.current_weather)
-        obs,info = self.env.reset(seed=seed,options=options)
-        obs = self._parse_obs(obs)
-        self._set_friction(self.current_weather) 
-        
-        obs = obs.reshape(-1)
-        return obs,info
-    def close(self):
-        self.env.close()
-    def render(self):
-        frame = self.env.render()
-        # Ensure frame is a writable, contiguous numpy array
-        frame = np.ascontiguousarray(frame)
-        weather_name = self.WEATHER_NAMES[self.current_weather]
-        text_main = f"Weather: {weather_name}"
-        text_sub = f"Left: {self.steps_remaining}"
-        color = self.WEATHER_COLORS[self.current_weather]
-        cv2.putText(frame, text_main, (10, 15), 
-                    cv2.FONT_HERSHEY_SIMPLEX, 0.35, color, 1, cv2.LINE_AA)
-            
-        cv2.putText(frame, text_sub, (10, 28), 
-                        cv2.FONT_HERSHEY_SIMPLEX, 0.25, (220, 220, 220), 1, cv2.LINE_AA)
-        return frame
-    
-    def _set_perception_distance(self,weather_type:int):
-        self.current_weather = weather_type 
-        if weather_type == self.RAINY:
-            self.env.unwrapped.PERCEPTION_DISTANCE = 200 # unit: m
-        elif weather_type == self.FOGGY:
-            self.env.unwrapped.PERCEPTION_DISTANCE = 100 # unit: m
-        elif weather_type == self.SNOWY:
-            self.env.unwrapped.PERCEPTION_DISTANCE = 100 # unit: m
-        elif weather_type == self.CLEAR:
-            self.env.unwrapped.PERCEPTION_DISTANCE = 200 # unit: m
-        else:
-            raise ValueError(f"Invalid weather type: {weather_type}")
-    
-    def _set_friction(self,weather_type:int):
-        if weather_type == self.RAINY:
-            self.env.unwrapped.controlled_vehicles[0].FRICTION_REAR = 5
-            self.env.unwrapped.controlled_vehicles[0].FRICTION_FRONT = 4
-        elif weather_type == self.FOGGY:
-            self.env.unwrapped.controlled_vehicles[0].FRICTION_REAR = 15
-            self.env.unwrapped.controlled_vehicles[0].FRICTION_FRONT = 15
-        elif weather_type == self.SNOWY:
-            self.env.unwrapped.controlled_vehicles[0].FRICTION_REAR = 3
-            self.env.unwrapped.controlled_vehicles[0].FRICTION_FRONT = 4
-        elif weather_type == self.CLEAR:
-            self.env.unwrapped.controlled_vehicles[0].FRICTION_REAR = 15
-            self.env.unwrapped.controlled_vehicles[0].FRICTION_FRONT = 15
-        else:
-            raise ValueError(f"Invalid weather type: {weather_type}")
-    
-    def _sample_new_weather(self):
-        self.current_weather = np.random.choice(self.WEATHER_TYPES, p=self.weather_probs) 
-        t_min, t_max = self.DURATION_RANGE[self.current_weather]
-        self.steps_remaining = np.random.randint(t_min, t_max + 1) 
-
-
-def make_highway_env(env_name,obs_config,seed=0, env_config = None,render_mode = 'rgb_array', flatten_obs = False):
-    env = gym.make(env_name, config=env_config,render_mode=render_mode)
-    env = HighwayEnvWrapper(env,obs_config,flatten_obs)
-    env = gym.wrappers.RecordEpisodeStatistics(env)
-    return env
-
-def make_highway_weather(
-    env_name,
-    weather_probs,
-    env_config,
-    seed=0
-):
-    env = gym.make(env_name, render_mode="rgb_array", config=env_config)
-    env = HighwayWeatherWrapper(env,weather_probs)
-    env = gym.wrappers.RecordEpisodeStatistics(env)
-    return env
-
 
 
 import numpy as np
@@ -792,7 +571,7 @@ def _normalize_obs_config(obs_config: Any) -> Dict[str, Tuple[int, ...]]:
 def _infer_env_category_from_config_name_or_cfg(
     config_name: Optional[str],
     cfg: Any,
-) -> Literal["dmc", "metaworld", "myosuite", "highway", "weather", "box2d"]:
+) -> Literal["dmc", "metaworld", "weather", "box2d"]:
     """
     Infer which env creator to use.
 
@@ -903,27 +682,6 @@ def make_env_and_eval_env_from_cfg(
         )
         return env, eval_env, obs_config_norm
 
-    if env_category == "myosuite":
-        env_name = getattr(env_cfg, "env_name", None) or getattr(env_cfg, "myosuite_env_name", None)
-        if env_name is None:
-            raise ValueError("myosuite env requires cfg.env.env_name (or cfg.env.myosuite_env_name)")
-        env = make_myosuite_env(
-            env_name=env_name,
-            obs_config=obs_config_norm,
-            seed=seed,
-            is_sparse_reward=getattr(env_cfg, "is_sparse_reward", False),
-            camera_id_render=getattr(env_cfg, "camera_id_render", 4),
-            camera_size=getattr(env_cfg, "camera_size", (256, 256)),
-        )
-        eval_env = make_myosuite_env(
-            env_name=env_name,
-            obs_config=obs_config_norm,
-            seed=seed,
-            is_sparse_reward=getattr(env_cfg, "is_sparse_reward", False),
-            camera_id_render=getattr(env_cfg, "camera_id_render", 4),
-            camera_size=getattr(env_cfg, "camera_size", (256, 256)),
-        )
-        return env, eval_env, obs_config_norm
 
     if env_category == "box2d":
         env_name = getattr(env_cfg, "env_name", None) or getattr(env_cfg, "box2d_env_name", None)

@@ -1,0 +1,5 @@
+Starting Packed Segment 1...
+   -> [Seg 1] Launching seed 42 (Log: /expanse/lustre/projects/chi157/jji3/Oracle-Guided-RL/slurm_logs/train_simba_s1_seed42_46375013.log)
+   -> [Seg 1] Launching seed 43 (Log: /expanse/lustre/projects/chi157/jji3/Oracle-Guided-RL/slurm_logs/train_simba_s1_seed43_46375013.log)
+   -> [Seg 1] Launching seed 44 (Log: /expanse/lustre/projects/chi157/jji3/Oracle-Guided-RL/slurm_logs/train_simba_s1_seed44_46375013.log)
+⏳ Waiting for pids:  587859 587860 587861

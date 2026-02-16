@@ -1,0 +1,5 @@
+Starting Packed Segment 2...
+   -> [Seg 2] Launching seed 42 (Log: /expanse/lustre/projects/chi157/jji3/Oracle-Guided-RL/slurm_logs/train_simba_s2_seed42_46375014.log)
+   -> [Seg 2] Launching seed 43 (Log: /expanse/lustre/projects/chi157/jji3/Oracle-Guided-RL/slurm_logs/train_simba_s2_seed43_46375014.log)
+   -> [Seg 2] Launching seed 44 (Log: /expanse/lustre/projects/chi157/jji3/Oracle-Guided-RL/slurm_logs/train_simba_s2_seed44_46375014.log)
+⏳ Waiting for pids:  600194 600195 600196
