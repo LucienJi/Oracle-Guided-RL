@@ -6,7 +6,16 @@ MODULE_NAME="$1"        # e.g., train_CurrimaxAdv
 SEGMENTS="$2"           # 现在这个参数生效了！例如：3
 SEEDS_LIST="$3"         # 传入一串种子，例如 "42 43 44"
 shift 3
-PYTHON_ARGS_BASE=("$@") # 其他参数
+# Parse out --exclude=* for sbatch; rest go to Python
+EXCLUDE_NODES=""
+PYTHON_ARGS_BASE=()
+for arg in "$@"; do
+  if [[ "$arg" == --exclude=* ]]; then
+    EXCLUDE_NODES="${arg#--exclude=}"
+  else
+    PYTHON_ARGS_BASE+=("$arg")
+  fi
+done
 
 # ================= PATHS =================
 BASE="/expanse/lustre/projects/chi157/jji3"
@@ -61,7 +70,11 @@ for i in $(seq 1 "$SEGMENTS"); do
     SBATCH_CMD+=(--dependency=afterany:"$PREV_JOB")
   fi
 
-  # 生成并提交 Job 脚本
+  # Optional SBATCH --exclude line (when EXCLUDE_NODES is set)
+  SBATCH_EXCLUDE=""
+  [[ -n "$EXCLUDE_NODES" ]] && SBATCH_EXCLUDE="#SBATCH --exclude=${EXCLUDE_NODES}"
+
+# 生成并提交 Job 脚本
   SBATCH_OUTPUT=$("${SBATCH_CMD[@]}" <<EOF
 #!/bin/bash
 #SBATCH --job-name=${JOB_NAME}_s${i}
@@ -77,6 +90,7 @@ for i in $(seq 1 "$SEGMENTS"); do
 #SBATCH -A ${ACCOUNT}
 #SBATCH --constraint=${CONSTRAINTS}
 #SBATCH --no-requeue
+${SBATCH_EXCLUDE}
 
 set -euo pipefail
 source /etc/profile.d/modules.sh

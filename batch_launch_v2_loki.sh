@@ -9,6 +9,20 @@ export PARTITION="gpu-shared"
 export TIME="1:00:00"
 export JOB_NAME_PREFIX="LOKI"
 
+# Optional args: --total_timesteps=500000 --capacity=500000 --exclude=node1,node2
+TOTAL_TIMESTEPS=500000
+CAPACITY=500000
+EXCLUDE_OPT=(--exclude=exp-9-60)
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --total_timesteps=*) TOTAL_TIMESTEPS="${1#*=}" ;;
+    --capacity=*)       CAPACITY="${1#*=}" ;;
+    --exclude=*)        EXCLUDE_OPT=("$1") ;;
+    *)                  echo "Unknown option: $1"; exit 1 ;;
+  esac
+  shift
+done
+
 # MetaWorld tasks from config/oracles/metaworld/
 tasks=(
     assembly
@@ -26,33 +40,26 @@ tasks=(
 # Tasks that require env.sparse_reward=true
 SPARSE_TASKS="hammer assembly drawer-open pick-place push-wall"
 
-# 6 seeds total: 3 jobs × 2 seeds each
-SEEDS_GROUP1="42 43"
-SEEDS_GROUP2="44 45"
-SEEDS_GROUP3="46 47"
+# 6 seeds total: 2 jobs × 3 seeds each
+SEEDS_GROUP1="42 43 44"
+SEEDS_GROUP2="45 46 47"
 SEGMENTS="1"
 
 for task in "${tasks[@]}"; do
-    EXTRA_ARGS=()
+    EXTRA_ARGS=("training.total_timesteps=${TOTAL_TIMESTEPS}" "training.capacity=${CAPACITY}")
     [[ " $SPARSE_TASKS " == *" $task "* ]] && EXTRA_ARGS+=(env.sparse_reward=true)
 
-    echo "Submitting LOKI job 1/3 (seeds $SEEDS_GROUP1) for task: $task"
+    echo "Submitting LOKI job 1/2 (seeds $SEEDS_GROUP1) for task: $task"
     bash "$LAUNCH_SCRIPT" \
         "baselines.train_loki" "$SEGMENTS" "$SEEDS_GROUP1" \
         --config-name "baselines_configs/loki/metaworld/${task}" \
-        "${EXTRA_ARGS[@]}"
+        "${EXCLUDE_OPT[@]}" "${EXTRA_ARGS[@]}"
     sleep 1
-    echo "Submitting LOKI job 2/3 (seeds $SEEDS_GROUP2) for task: $task"
+    echo "Submitting LOKI job 2/2 (seeds $SEEDS_GROUP2) for task: $task"
     bash "$LAUNCH_SCRIPT" \
         "baselines.train_loki" "$SEGMENTS" "$SEEDS_GROUP2" \
         --config-name "baselines_configs/loki/metaworld/${task}" \
-        "${EXTRA_ARGS[@]}"
-    sleep 1
-    echo "Submitting LOKI job 3/3 (seeds $SEEDS_GROUP3) for task: $task"
-    bash "$LAUNCH_SCRIPT" \
-        "baselines.train_loki" "$SEGMENTS" "$SEEDS_GROUP3" \
-        --config-name "baselines_configs/loki/metaworld/${task}" \
-        "${EXTRA_ARGS[@]}"
+        "${EXCLUDE_OPT[@]}" "${EXTRA_ARGS[@]}"
     sleep 1
 done
 
