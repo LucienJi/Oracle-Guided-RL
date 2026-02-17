@@ -125,6 +125,7 @@ for seed in ${SEEDS_LIST}; do
   eval "python -m scripts.${MODULE_NAME} ${PYTHON_ARGS_QUOTED} seed=\$seed" > "\$TASK_LOG" 2>&1 &
   
   pids="\$pids \$!"
+  sleep $((1 + RANDOM % 5))   # 1~3 秒，保证一定错峰
 done
 
 echo "⏳ Waiting for pids: \$pids"
