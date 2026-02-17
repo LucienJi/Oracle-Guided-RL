@@ -6,7 +6,7 @@ LAUNCH_SCRIPT="$SCRIPT_DIR/launch_train_v2.sh"
 
 export ACCOUNT="chi157"
 export PARTITION="gpu-shared"
-export TIME="1:00:00"
+export TIME="33:00:00"
 export JOB_NAME_PREFIX="CurrimaxAdv"
 
 # Optional args: --total_timesteps=500000 --capacity=500000 --exclude=node1,node2
@@ -26,8 +26,8 @@ done
 # MetaWorld tasks from config/oracles/metaworld/
 tasks=(
     assembly
-    # basketball
-    # drawer-open
+    basketball
+    drawer-open
     # hammer
     # lever-pull
     # peg-insert-side
