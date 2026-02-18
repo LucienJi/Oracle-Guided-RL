@@ -25,12 +25,12 @@ done
 
 # MetaWorld tasks from config/oracles/metaworld/
 tasks=(
-    assembly
-    basketball
-    drawer-open
-    # hammer
-    # lever-pull
-    # peg-insert-side
+    # assembly
+    # basketball
+    # drawer-open
+    hammer
+    lever-pull
+    peg-insert-side
     # peg-unplug-side
     # pick-place
     # push-wall
