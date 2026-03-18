@@ -4,8 +4,19 @@ defaults:
   - /oracles/box2d/bipedal_learner
   - _self_
 
-method_name: "CUP"
+method_name: "DEBUG_CUP"
 seed: 42
+env:
+  env_name: "bipedal"
+  mode: "learner"
+  stack_frames: 4
+  max_steps: 1500
+  seed: ${seed}
+
+obs_config:
+  state: [136]
+
+
 
 run_name: ${method_name}_${env.env_name}_${env.mode}_seed${seed}
 

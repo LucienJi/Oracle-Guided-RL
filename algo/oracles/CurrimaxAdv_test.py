@@ -706,10 +706,16 @@ class CurrMaxAdv(BaseAlgo):
                             guided_training_infos["env/scheduled_exploration_prob"] = float(sched_p)
                             guided_training_infos["env/scheduled_exploration_selected_index"] = float(chosen_oracle_index)
                         else:
-                            final_action, normalized_action, selected_action_index, guided_training_infos = self.get_guided_training_action(env_obs)
-                            if guided_training_infos is not None:
-                                guided_training_infos["env/scheduled_exploration"] = 0.0
-                                guided_training_infos["env/scheduled_exploration_prob"] = float(sched_p)
+                            if self.scheduled_exploration:
+                                final_action, normalized_action, selected_action_index, guided_training_infos = self.get_training_action_with_index(env_obs, 0)
+                                if guided_training_infos is not None:
+                                    guided_training_infos["env/scheduled_exploration"] = 0.0
+                                    guided_training_infos["env/scheduled_exploration_prob"] = float(sched_p)
+                            else:
+                                final_action, normalized_action, selected_action_index, guided_training_infos = self.get_guided_training_action(env_obs)
+                                if guided_training_infos is not None:
+                                    guided_training_infos["env/scheduled_exploration"] = 0.0
+                                    guided_training_infos["env/scheduled_exploration_prob"] = float(sched_p)
                         self._committed_policy_index = int(selected_action_index)
                         # We've already consumed 1 step with this selection.
                         self._committed_steps_left = int(consecutive_steps) - 1

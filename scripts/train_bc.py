@@ -23,7 +23,7 @@ from algo.algo_utils import ObservationNormalizer
 
 
 
-@hydra.main(config_path="../config", config_name="dmc/bc_cheetah", version_base=None)
+@hydra.main(config_path="../config", config_name="dmc/bc_humanoid", version_base=None)
 def train_bc(cfg: DictConfig):
     from algo.baselines.bc import BC
     # Device
@@ -33,9 +33,14 @@ def train_bc(cfg: DictConfig):
     set_random_seed(cfg.training.seed)
 
     # Artifact layout (run_name, dirs, wandb group)
+    # Keep offline dataset path stable: artifact manager sets a new replay dir by default,
+    # which is correct for online data collection but wrong for BC preloaded datasets.
+    dataset_replay_dir = cfg.training.get("replay_dir", None)
     artifacts = build_artifact_paths(cfg)
     ensure_artifact_dirs(artifacts)
     update_cfg_with_artifacts(cfg, artifacts)
+    if dataset_replay_dir is not None:
+        cfg.training.replay_dir = dataset_replay_dir
 
     # Env (DeepMind Control cartpole swingup with dict obs)
     raw_obs_config = cfg.get("obs_config", {})

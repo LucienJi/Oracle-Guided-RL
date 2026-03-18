@@ -19,7 +19,7 @@ from env.env_utils import (
 from data_buffer.replay_buffer import ReplayBuffer
 
 
-@hydra.main(config_path="../../config", config_name="baselines_configs/cup/quad/cup_quad", version_base=None)
+@hydra.main(config_path="../../config", config_name="baselines_configs/cup/bipedal/learner", version_base=None)
 def train_cup_simba(cfg: DictConfig):
     from algo.baselines.cup import CUPAlgo
 

@@ -18,7 +18,7 @@ training:
   # -----------------------
   # Core training / bookkeeping
   # -----------------------
-  total_timesteps: 10000
+  total_timesteps: 100000
   run_name: ${run_name} # defined in task-specific config
   checkpoint_dir: "./checkpoints/${run_name}"
   seed: ${seed}
@@ -28,7 +28,7 @@ training:
   # -----------------------
   # Override this in env-specific configs to point at an existing dataset directory.
   replay_dir: "./datasets/dmc/${env.domain_name}_${env.task_name}"
-  capacity: 1000000
+  capacity: 5000000
   nstep: 1
   discount: 0.99
   tau: 0.005

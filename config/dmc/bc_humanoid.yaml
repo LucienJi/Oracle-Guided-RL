@@ -3,7 +3,7 @@ defaults:
   - /base_configs/bc_dmc
   - _self_
 
-method_name: "BC_Humanoid"
+method_name: "BC_Humanoid_v2"
 seed: 42
 
 env:
@@ -25,8 +25,8 @@ run_name: ${method_name}_${env.domain_name}_${env.task_name}_seed${seed}
 
 training:
   # Offline dataset location (must contain *.npz episodes)
-  replay_dir: "./checkpoints/Baseline_Humanoid_humanoid_run_seed0/replay_buffer"
-  expert_dir: "./checkpoints/Baseline_Humanoid_humanoid_run_seed0"
+  replay_dir: "./checkpoints/humanoid_run/DMC_Baseline_Humanoid_seed21/seed21/replay"
+  expert_dir: "./checkpoints/humanoid_run/DMC_Baseline_Humanoid_seed21/seed21/checkpoints"
 
   # Runtime knobs / logging
   use_compile: true
