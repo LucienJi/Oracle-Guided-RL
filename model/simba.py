@@ -1,11 +1,6 @@
-import math
 import copy
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
-from torch.distributions import Normal, TransformedDistribution, Independent
-from torch.distributions.transforms import TanhTransform
-import numpy as np
 from model.simba_base import CategoricalCritic, CategoricalValue, DeterministicPolicy
 
 

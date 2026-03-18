@@ -7,7 +7,9 @@ numpy
 scipy
 pandas
 matplotlib
+seaborn
 opencv-python
+rliable
 
 gymnasium==1.2.0
 dm-control==1.0.28

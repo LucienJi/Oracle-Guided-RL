@@ -1,17 +1,15 @@
 import random
 import time
-import math
 from collections import deque
-from typing import Any, Dict, Optional, Tuple, List
+from typing import Any, Dict, Optional, Tuple
 
 import numpy as np
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
 import wandb
 torch.set_float32_matmul_precision('high')
 from algo.base_algo import BaseAlgo
-from algo.algo_utils import ObservationNormalizer, RewardNormalizer, RunningMeanStd, categorical_td_loss, reshape_into_blocks, save_eval_results_to_csv
+from algo.algo_utils import ObservationNormalizer, RewardNormalizer, categorical_td_loss, reshape_into_blocks, save_eval_results_to_csv
 from data_buffer.replay_buffer import ReplayBuffer
 from model.simba import DeterministicSimbaPolicy, SimbaCritics, SimbaValues
 from model.simba_base import EPS, l2normalize_network

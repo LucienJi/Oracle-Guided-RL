@@ -12,7 +12,7 @@ from model.metaworld_oracle_policy import (
     MetaworldOraclePolicyWrapper,
     MetaworldTorchOraclePolicyWrapper,
 )
-from model.simba import DeterministicSimbaPolicy, SimbaCritics, SimbaValues
+from model.simba import SimbaCritics, SimbaValues
 from model.oracle_wrappers import DeterministicSimbaOracleWrapper
 
 
@@ -304,4 +304,3 @@ def build_simba_oracle_modules_from_cfg(
         )
 
     return oracles_actors, oracles_critics, oracles_values
-

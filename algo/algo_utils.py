@@ -1,17 +1,13 @@
 import cv2
 import numpy as np
-import threading
 import os
 from concurrent.futures import ThreadPoolExecutor
 import h5py
 import torch
-import os
-import numpy as np
 import random
 import re
 import math
 import glob
-from torch.utils.data import Dataset, DataLoader
 try:
     import torchvision.transforms.functional as TF
     import torchvision.transforms as T
@@ -24,8 +20,7 @@ except Exception as _e:
 import copy
 from torch.utils._pytree import tree_map
 import csv
-from dataclasses import dataclass
-from typing import Dict, Optional, Tuple, Any
+from typing import Dict, Tuple
 
 def save_eval_results_to_csv(checkpoint_dir, run_name, eval_results, *, eval_dir=None):
     """Save evaluation results to CSV file - robust version that adapts to eval_results keys."""

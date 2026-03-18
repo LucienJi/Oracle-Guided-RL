@@ -1,10 +1,8 @@
-import os
-from typing import Callable, Optional, Tuple, Type, Dict, Any
+from typing import Optional, Dict, Any
 import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-import copy
 import math
 from torch.distributions.utils import _standard_normal
 # Log std bounds for stochastic tanh-Gaussian heads
@@ -305,4 +303,3 @@ class DeterministicPolicy(OraclePolicyBase):
     def get_eval_action(self, observations: Any):
         means = self.policy(observations)
         return TruncatedNormal(means, 1.0).mean_truncated
-

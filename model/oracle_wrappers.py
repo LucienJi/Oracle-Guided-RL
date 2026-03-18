@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from typing import Any, Dict, Optional
 
-import numpy as np
 import torch
 import torch.nn as nn
 
@@ -119,5 +118,4 @@ class DeterministicSimbaOracleWrapper(nn.Module):
         if self.obs_normalizer is None:
             self.obs_normalizer = ObservationNormalizer(obs_dim=int(self.policy.obs_dim))
         self.obs_normalizer.load_state_dict(state)
-
 

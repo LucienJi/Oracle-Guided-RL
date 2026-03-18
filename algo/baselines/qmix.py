@@ -8,11 +8,10 @@ action. Training losses remain standard DDPG per task.
 import random
 import time
 from collections import deque
-from typing import List, Any, Dict, Tuple
+from typing import Any, Dict, Tuple
 
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
 import numpy as np
 import wandb
 
@@ -577,4 +576,3 @@ class QMPAlgo(BaseAlgo):
             self.G = self.reward_normalizer.G
             self.G_r_max = self.reward_normalizer.G_r_max
         return checkpoint
-

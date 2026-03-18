@@ -5,8 +5,10 @@ import torch
 import hydra
 from omegaconf import DictConfig, OmegaConf
 
-# Ensure paths are correct
-sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
+# Ensure the repository root is importable when running this file directly.
+PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+if PROJECT_ROOT not in sys.path:
+    sys.path.insert(0, PROJECT_ROOT)
 
 from algo.artifacts import (
     build_artifact_paths,
@@ -146,5 +148,4 @@ def train_CurrimaxAdv(cfg: DictConfig):
 
 if __name__ == "__main__":
     train_CurrimaxAdv()
-
 

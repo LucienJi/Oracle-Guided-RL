@@ -9,5 +9,4 @@
 # 注意: paths_local.yaml 在 .gitignore 中，不会被提交到 git
 
 # 项目根目录 - 修改为你的实际路径
-project_root: /expanse/lustre/projects/chi157/jji3/Oracle-Guided-RL
-
+project_root: /path/to/Oracle-Guided-RL

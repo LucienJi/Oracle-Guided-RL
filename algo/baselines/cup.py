@@ -20,7 +20,7 @@ from algo.algo_utils import ObservationNormalizer, RewardNormalizer, categorical
 from data_buffer.replay_buffer import ReplayBuffer
 from model.simba import DeterministicSimbaPolicy, SimbaCritics
 from model.simba_base import EPS, l2normalize_network
-from model.mlp import DeterministicPolicy, OraclePolicyBase
+from model.mlp import OraclePolicyBase
 
 
 

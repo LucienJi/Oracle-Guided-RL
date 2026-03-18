@@ -5,14 +5,10 @@ import re
 import numpy as np
 import wandb
 import csv
-from datetime import datetime
-import torch.nn as nn
-import torch.nn.functional as F
 from tqdm import tqdm
-from typing import Dict, Tuple, Optional
+from typing import Optional
 
-
-from algo.algo_utils import find_latest_checkpoint, cleanup_old_checkpoints, save_eval_results_to_csv, save_frames_as_video_async, get_frame, set_seed
+from algo.algo_utils import find_latest_checkpoint, cleanup_old_checkpoints, save_frames_as_video_async, get_frame, set_seed
 from data_buffer.replay_buffer import ReplayBuffer
 
 

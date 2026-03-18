@@ -1,116 +1,94 @@
 # Oracle-Guided-RL
 
-Oracle-Guided Reinforcement Learning 项目
+Oracle-Guided-RL is a research codebase for comparing oracle-guided reinforcement learning methods against strong baselines across DeepMind Control, Box2D-style hybrid environments, and Metaworld tasks. The repository keeps experiment logic config-driven through Hydra and stores benchmark variants as tracked YAML configs.
 
-## 快速开始
+## Canonical Setup
 
-### 在另一台服务器上安装环境
-
-#### 方法 1: 使用自动安装脚本（推荐）
+Use the root Conda file as the canonical environment entry point:
 
 ```bash
-git clone https://github.com/LucienJi/Oracle-Guided-RL.git
+git clone <repo-url>
 cd Oracle-Guided-RL
-bash install.sh
-bash setup_paths.sh  # 配置路径（重要！）
-```
-
-#### 方法 2: 手动安装
-
-详细步骤请查看 [INSTALL.md](INSTALL.md)
-
-**简要步骤：**
-1. 克隆仓库
-2. **运行路径配置**: `bash setup_paths.sh` ⚠️ **重要！**
-3. 创建 conda 环境：`conda env create -f requirements/oracles.yaml`
-4. 激活环境：`conda activate oracles`
-5. 安装第三方库（CARL, Metaworld, HighwayEnv, MyoSuite）
-6. 验证安装
-
-## 路径配置（重要！）
-
-项目使用统一的路径管理系统，避免硬编码绝对路径。
-
-**首次使用时必须运行：**
-
-```bash
+conda env create -f environment.yml
+conda activate oracles
 bash setup_paths.sh
 ```
 
-这会创建 `config/paths_local.yaml`（gitignored），定义你的项目根目录。所有配置文件会自动使用 `${paths.project_root}` 来引用路径。
+`setup_paths.sh` creates `config/paths_local.yaml`, which keeps machine-specific paths out of tracked configs.
 
-**更多信息：** 查看 [INSTALL.md](INSTALL.md#路径配置)
+### Benchmark-specific extras
 
-## HPC 集群安装
+- DeepMind Control quick start: no extra local clones beyond the Conda environment.
+- Metaworld, CARL, HighwayEnv, and MyoSuite runs require local checkouts under `third_party/`.
+- `install.sh` is a strict convenience wrapper for environments where those `third_party/` directories already exist.
 
-### EXPANSE HPC Cluster
+## Quick Start
 
-**快速设置（推荐）：**
-
-```bash
-# 在 EXPANSE 登录节点上
-cd /expanse/lustre/projects/chi157/jji3
-bash <(curl -s https://raw.githubusercontent.com/LucienJi/Oracle-Guided-RL/main/scripts/quick_setup_expanse.sh)
-# 或如果已克隆项目：
-cd Oracle-Guided-RL
-bash scripts/quick_setup_expanse.sh
-```
-
-**详细指南：**
-- 完整设置流程: [EXPANSE_SETUP.md](EXPANSE_SETUP.md)
-- 安装说明: [INSTALL_EXPANSE.md](INSTALL_EXPANSE.md)
-
-## 项目结构
-
-```
-Oracle-Guided-RL/
-├── algo/              # 算法实现
-├── config/            # 配置文件
-│   ├── paths.yaml     # 全局路径配置
-│   └── paths_local.yaml  # 本地路径覆盖（gitignored，由 setup_paths.sh 创建）
-├── data_buffer/       # 数据缓冲区
-├── env/               # 环境封装
-├── eval/              # 评估结果（gitignore）
-├── model/             # 模型定义
-├── requirements/      # 依赖文件
-│   ├── base.txt       # Python 依赖
-│   └── oracles.yaml   # Conda 环境配置
-├── scripts/           # 训练脚本
-├── third_party/       # 第三方库
-├── install.sh         # 自动安装脚本
-└── setup_paths.sh     # 路径配置脚本
-```
-
-## 使用说明
-
-激活环境后，运行训练脚本：
+Minimal tracked smoke run:
 
 ```bash
-conda activate oracles
-python scripts/train_*.py
+python -m scripts.train_simba \
+  --config-name dmc/simba_cartpole_sparse \
+  training.total_timesteps=1000 \
+  training.eval_every=500 \
+  training.save_freq=500 \
+  training.use_wandb=false \
+  training.track=false \
+  training.save_video=false \
+  training.resume=false \
+  training.use_compile=false \
+  seed=0
 ```
 
-## 依赖
+Representative full training entry points:
 
-- Python 3.10
-- PyTorch (CUDA 12.4)
-- MuJoCo >= 3.3
-- Gymnasium
-- DeepMind Control Suite
-- Metaworld
-- HighwayEnv
-- CARL
+```bash
+python -m scripts.train_CurrimaxAdv --config-name dmc/CurrimaxAdv_cheetah seed=42
+python -m scripts.train_bc --config-name dmc/bc_humanoid seed=42
+python -m scripts.train_CurrimaxAdv_test --config-name metaworld/CurrimaxAdv_assembly seed=42
+```
 
-完整依赖列表见 `requirements/base.txt`
+## Project Layout
 
-## 注意事项
+- `algo/`: algorithm implementations
+- `config/`: Hydra configs, grouped by benchmark family
+- `env/`: environment builders and wrappers
+- `model/`: policy and value networks
+- `scripts/`: tracked training entry points
+- `third_party/`: required local benchmark dependencies not versioned by the main repo
+- `tests/`: lightweight smoke tests for config composition and model instantiation
 
-- `eval/`, `outputs/`, `checkpoints/` 等目录在 .gitignore 中，不会从 GitHub 克隆
-- 如需数据或模型，需要从其他服务器单独传输
-- 确保服务器有 CUDA 12.4 兼容的 GPU
-- **重要**：在新集群上首次使用时，务必运行 `bash setup_paths.sh` 配置路径
+## Hydra Usage
 
-## 更多信息
+Configs are selected with `--config-name`, and overrides are passed as `key=value` pairs:
 
-- 详细安装说明: [INSTALL.md](INSTALL.md)
-- EXPANSE HPC 安装: [INSTALL_EXPANSE.md](INSTALL_EXPANSE.md)
+```bash
+python -m scripts.train_simba \
+  --config-name dmc/simba_hopper \
+  training.total_timesteps=20000 \
+  training.use_wandb=false \
+  seed=7
+```
+
+The repository does not require ignored local launchers for reproduction; review-facing commands should use tracked Python entry points directly.
+
+## Validation
+
+Static validation:
+
+```bash
+python -m compileall algo env model data_buffer scripts muon_pkg viz tests
+```
+
+Test suite:
+
+```bash
+python -m pytest tests -q
+```
+
+## Reproducibility Notes
+
+- Tracked experiment definitions live in `config/`; local paths should go only in `config/paths_local.yaml`.
+- Large artifacts such as `checkpoints/`, `outputs/`, and `eval/` are intentionally not versioned.
+- Current blocker: some benchmarks require `third_party/` clones that are not tracked by the main repository and are not submodules. The minimal structural fix is to add pinned submodules or a pinned bootstrap script. Until then, setup for those benchmarks is explicit but not fully self-contained from a clean clone.
+- Visualization configs now use repository-relative paths; generated figures still remain local artifacts.

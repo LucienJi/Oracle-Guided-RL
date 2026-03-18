@@ -1,4 +1,4 @@
-ROOT_DIR: "/share/data/ripl/jjt/projects/oracles/results"
+ROOT_DIR: "results"
 FILE_PATTERN: "eval_episodes_seed\\d+\\.csv"
 COLUMN_MAPPING:
   global_step: step
@@ -21,14 +21,13 @@ PLOT_SETTINGS:
   legend_font_size: 14
 USE_SUBFOLDERS: false
 ALGO_DIRS:
-  - "/share/data/ripl/jjt/projects/oracles/results/Quad_CUP_quadruped_run"
-  - "/share/data/ripl/jjt/projects/oracles/results/Quad_LOKI_quadruped_run"
-  - "/share/data/ripl/jjt/projects/oracles/results/Quad_MAPS_quadruped_run"
-  - "/share/data/ripl/jjt/projects/oracles/results/Quad_qmix_quadruped_run"
+  - "results/Quad_CUP_quadruped_run"
+  - "results/Quad_LOKI_quadruped_run"
+  - "results/Quad_MAPS_quadruped_run"
+  - "results/Quad_qmix_quadruped_run"
 ALGO_NAMES:
   - "CUP"
   - "LOKI"
   - "MAPS"
   - "QMIX"
-SAVE_PATH: "/share/data/ripl/jjt/projects/oracles/viz_results/quadruped_eval.png"
-
+SAVE_PATH: "viz_results/quadruped_eval.png"

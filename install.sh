@@ -2,7 +2,7 @@
 # Oracle-Guided-RL 快速安装脚本
 # 使用方法: bash install.sh
 
-set -e  # 遇到错误立即退出
+set -euo pipefail
 
 echo "=========================================="
 echo "Oracle-Guided-RL 环境安装脚本"
@@ -19,42 +19,49 @@ fi
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 cd "$SCRIPT_DIR"
 
+require_dir() {
+    local path="$1"
+    if [[ ! -d "$path" ]]; then
+        echo "错误: 缺少依赖目录 $path"
+        echo "当前仓库无法从干净 clone 独立复现这些 third_party 依赖。"
+        echo "最小修复建议: 将这些依赖改为 git submodule 或提供固定 commit 的 bootstrap 脚本。"
+        exit 1
+    fi
+}
+
 echo ""
 echo "步骤 1/5: 创建 Conda 环境..."
 echo "----------------------------------------"
-conda env create -f requirements/oracles.yaml
+conda env create -f environment.yml
 
 echo ""
-echo "步骤 2/5: 激活环境并安装第三方库..."
+echo "步骤 2/5: 检查并安装第三方库..."
 echo "----------------------------------------"
+
+require_dir "third_party/CARL"
+require_dir "third_party/Metaworld"
+require_dir "third_party/HighwayEnv"
+require_dir "third_party/myosuite"
 
 # 激活 conda 环境（在脚本中需要使用 conda run）
 echo "安装 CARL..."
 cd third_party/CARL
-conda run -n oracles pip install -e . > /dev/null 2>&1 || {
-    echo "警告: CARL 安装可能失败，请手动检查"
-}
+conda run -n oracles pip install -e .
 cd "$SCRIPT_DIR"
 
 echo "安装 Metaworld..."
 cd third_party/Metaworld
-conda run -n oracles pip install -e . > /dev/null 2>&1 || {
-    echo "警告: Metaworld 安装可能失败，请手动检查"
-}
+conda run -n oracles pip install -e .
 cd "$SCRIPT_DIR"
 
 echo "安装 HighwayEnv..."
 cd third_party/HighwayEnv
-conda run -n oracles pip install -e . > /dev/null 2>&1 || {
-    echo "警告: HighwayEnv 安装可能失败，请手动检查"
-}
+conda run -n oracles pip install -e .
 cd "$SCRIPT_DIR"
 
 echo "安装 MyoSuite..."
 cd third_party/myosuite
-conda run -n oracles pip install -e . > /dev/null 2>&1 || {
-    echo "警告: MyoSuite 安装可能失败，请手动检查"
-}
+conda run -n oracles pip install -e .
 cd "$SCRIPT_DIR"
 
 echo ""
@@ -71,16 +78,11 @@ conda run -n oracles python -c "import highway_env; print('✓ HighwayEnv instal
 conda run -n oracles python -c "import carl; print('✓ CARL installed')" || echo "✗ CARL 未正确安装"
 
 echo ""
-echo "步骤 4/5: 设置环境变量..."
+echo "步骤 4/5: 环境变量提示..."
 echo "----------------------------------------"
-
-# 检查是否已设置 MUJOCO_GL
-if ! grep -q "MUJOCO_GL" ~/.bashrc 2>/dev/null; then
-    echo 'export MUJOCO_GL=egl' >> ~/.bashrc
-    echo "✓ 已添加 MUJOCO_GL=egl 到 ~/.bashrc"
-else
-    echo "✓ MUJOCO_GL 已在 ~/.bashrc 中设置"
-fi
+echo "未修改 ~/.bashrc。"
+echo "如需无头渲染，请在当前 shell 或作业脚本中显式设置："
+echo "  export MUJOCO_GL=egl"
 
 echo ""
 echo "步骤 5/5: 安装完成！"
@@ -89,8 +91,7 @@ echo ""
 echo "使用方法:"
 echo "  1. 激活环境: conda activate oracles"
 echo "  2. 进入项目目录: cd $SCRIPT_DIR"
-echo "  3. 运行训练脚本: python scripts/train_*.py"
+echo "  3. 查看 README.md 获取唯一的 setup / quick start 路径"
 echo ""
 echo "如果遇到问题，请查看 INSTALL.md 获取详细说明。"
 echo ""
-

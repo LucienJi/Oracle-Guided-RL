@@ -9,7 +9,7 @@ from __future__ import annotations
 import random
 import time
 from collections import deque
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, Optional, Tuple
 
 import numpy as np
 import torch
@@ -750,4 +750,3 @@ class MAPSAlgo(BaseAlgo):
             self.G_r_max = self.reward_normalizer.G_r_max
 
         return checkpoint
-
