@@ -1,0 +1,50 @@
+# @package _global_
+defaults:
+  - /base_configs/maxAdv_dmc
+  - _self_
+
+method_name: "Submission_CurrimaxAdv_Smoke"
+seed: 0
+
+env:
+  domain_name: "cartpole"
+  task_name: "swingup_sparse"
+  render_size: [128, 128]
+  n_sub_steps: 1
+  seed: ${seed}
+
+obs_config:
+  position: [3]
+  velocity: [2]
+
+run_name: "${method_name}_${env.domain_name}_${env.task_name}_seed${seed}"
+
+smoke:
+  workflow: "currimaxadv"
+  num_steps: 5
+
+training:
+  total_timesteps: 1000
+  n_oracles: 2
+  capacity: 256
+  learner_learning_starts: 8
+  per_oracle_explore_steps: 4
+  warmup_update_times: 1
+  action_selection_buffer_size: 64
+  learner_critic_batch_size: 32
+  eval_every: 250
+  eval_episodes: 1
+  save_freq: 250
+  save_video_every: 100000
+  resume: false
+  use_wandb: false
+  save_video: false
+  use_compile: false
+  save_episodes_to_disk: false
+  log_every: 1
+  keep_checkpoint_num: 2
+  compile_env_interaction: false
+
+oracles_dict:
+  oracle_0: null
+  oracle_1: null

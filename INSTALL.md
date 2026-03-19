@@ -1,8 +1,8 @@
 # Installation Notes
 
-This file supplements `README.md` with the benchmark dependency details that matter for reproducibility.
+This file documents the setup path used by the submission package. The professor-facing workflow is DMC-only and does not require the optional benchmark dependencies under `third_party/`.
 
-## Canonical environment path
+## Canonical setup
 
 ```bash
 conda env create -f environment.yml
@@ -10,43 +10,42 @@ conda activate oracles
 bash setup_paths.sh
 ```
 
-Use `environment.yml` as the canonical environment definition. `requirements/oracles.yaml` is kept for compatibility with existing workflows, but the review-facing path should start from the repo root.
+`environment.yml` is the canonical environment definition. `setup_paths.sh` writes `config/paths_local.yaml` so tracked configs do not need hard-coded machine paths.
 
-## Optional benchmark dependencies
+## What is required for the submission path
 
-DeepMind Control runs can start after the Conda environment is created.
+Required:
 
-The following local clones are required only for the corresponding benchmark families:
+- Python 3.10
+- PyTorch
+- Hydra / OmegaConf
+- DeepMind Control (`dm-control`)
+- test utilities such as `pytest`
 
-```bash
-pip install -e third_party/CARL
-pip install -e third_party/Metaworld
-pip install -e third_party/HighwayEnv
-pip install -e third_party/myosuite
-```
+Not required for the professor review path:
 
-If one of those directories is missing, `install.sh` now fails immediately instead of silently continuing.
+- `third_party/CARL`
+- `third_party/Metaworld`
+- `third_party/HighwayEnv`
+- `third_party/myosuite`
+- Box2D-specific extras
 
-## Reproducibility blocker
+## Optional broader research dependencies
 
-The main repository does not version these `third_party/` dependencies and does not register them as git submodules. In the current checkout, the observed local references are:
+The repository still contains code for Metaworld, HighwayEnv, MyoSuite, and custom Box2D environments. Those workflows require additional dependencies and, in several cases, local unversioned clones under `third_party/`.
 
-- `third_party/CARL`: `https://github.com/automl/CARL.git` @ `2adf54cceff3b794c0ee330debf44bc428c2015d`
-- `third_party/Metaworld`: `https://github.com/Farama-Foundation/Metaworld.git` @ `066c391a20a48f34b38c1c2faef85aa4f5068b0d`
-- `third_party/HighwayEnv`: `https://github.com/Farama-Foundation/HighwayEnv.git` @ `75342a1b77e7ed33b99330a356890ffe31fbf9cb`
-- `third_party/myosuite`: `https://github.com/facebookresearch/myosuite.git` @ `300058ea09f34f8598e4f4a6e3765c34676f14c4`
-
-Minimal fix: replace this implicit requirement with pinned git submodules or a tracked bootstrap script that clones exact commits.
+`install.sh` remains a stricter convenience wrapper for those broader workflows. It is not the primary setup path for the submission package.
 
 ## Validation commands
 
+Recommended after setup:
+
 ```bash
-python -m compileall algo env model data_buffer scripts muon_pkg viz tests
+python -m scripts.smoke_dmc --config-name dmc/submission_smoke_cartpole
 python -m pytest tests -q
+python -m compileall algo env model data_buffer scripts tests
 ```
 
-## Notes
+## Known limitation
 
-- `setup_paths.sh` creates `config/paths_local.yaml`; do not hardcode machine paths in tracked configs.
-- `install.sh` no longer edits `~/.bashrc`. Set `MUJOCO_GL=egl` explicitly in the shell or job script when needed.
-- Review-facing runs should use tracked Python entry points, not ignored local launcher shells.
+From a clean clone, the non-DMC benchmark families are not fully self-contained because some required external repositories are not tracked as submodules. This does not block the DMC-only submission package, but it does limit full-repo reproducibility.

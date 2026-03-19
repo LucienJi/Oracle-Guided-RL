@@ -225,11 +225,11 @@ class HybridLunarLander(gym.Env, EzPickle):
         pos = self.lander.position
         vel = self.lander.linearVelocity
         
-        # 视口的一半宽度，用于归一化
+        # Half of the viewport width, used for normalization
         viewport_half_w = VIEWPORT_W / SCALE / 2
         
         state = [
-            # --- 修改: 计算相对于 Helipad 中心的 X 坐标 ---
+            # --- Change: compute X relative to the helipad center ---
             (pos.x - self.helipad_x) / viewport_half_w,
             # -------------------------------------------
             
@@ -316,25 +316,25 @@ class HybridLunarLander(gym.Env, EzPickle):
         W = VIEWPORT_W / SCALE
         H = VIEWPORT_H / SCALE
 
-        # --- 修改开始: 随机化地形 ---
+        # --- Begin change: randomize the terrain ---
         CHUNKS = 11
         height = self.np_random.uniform(0, H / 2, size=(CHUNKS + 1,))
         chunk_x = [W / (CHUNKS - 1) * i for i in range(CHUNKS)]
         
-        # 随机选择 Helipad 的中心索引。
-        # 原始代码需要在中心点前后各延伸2个单位变平，所以我们需要留出余量。
-        # 范围从 2 到 CHUNKS - 3 (对于11个chunk，就是索引 2 到 8)
+        # Randomly choose the helipad center index.
+        # The original code needs two flat units on each side of the center, so we need margin.
+        # The valid range is 2 to CHUNKS - 3 (for 11 chunks, indices 2 through 8).
         helipad_idx = self.np_random.integers(2, CHUNKS - 2)
 
         self.helipad_x1 = chunk_x[helipad_idx - 1]
         self.helipad_x2 = chunk_x[helipad_idx + 1]
         
-        # 记录 Helipad 的绝对中心位置，用于 Observation
+        # Record the absolute helipad center position for observations
         self.helipad_x = (self.helipad_x1 + self.helipad_x2) / 2
 
         self.helipad_y = H / 4
         
-        # 将 Helipad 周围的地形拉平
+        # Flatten the terrain around the helipad
         height[helipad_idx - 2] = self.helipad_y
         height[helipad_idx - 1] = self.helipad_y
         height[helipad_idx + 0] = self.helipad_y
@@ -342,7 +342,7 @@ class HybridLunarLander(gym.Env, EzPickle):
         height[helipad_idx + 2] = self.helipad_y
         
         smooth_y = [0.33 * (height[i - 1] + height[i + 0] + height[i + 1]) for i in range(CHUNKS)]
-        # --- 修改结束 ---
+        # --- End change ---
 
         self.moon = self.world.CreateStaticBody(shapes=edgeShape(vertices=[(0, 0), (W, 0)]))
         self.sky_polys = []

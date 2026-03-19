@@ -1,20 +1,15 @@
+import importlib
 import os
 os.environ.setdefault("MUJOCO_GL", "egl")
+import random
+from collections import deque
+from typing import Optional, Tuple, Dict, Any, Literal
+
 import gymnasium as gym
 import numpy as np
 import torch
-import random
-import metaworld
-import highway_env
-import cv2
-from myosuite.renderer.mj_renderer import MJRenderer
-from typing import Optional, Tuple, Dict, Any, Literal
-import numpy as np
-import gymnasium as gym
 from gymnasium import spaces
-from dm_control import suite
 from omegaconf import OmegaConf
-import cv2
 
 
 def _is_missing_checkpoint(x) -> bool:
@@ -36,6 +31,37 @@ def set_random_seed(seed):
     np.random.seed(seed)
     torch.manual_seed(seed)
     torch.backends.cudnn.deterministic = True
+
+
+def _optional_dependency_error(module_name: str, feature_name: str, install_hint: str) -> ImportError:
+    return ImportError(
+        f"{feature_name} requires the optional dependency '{module_name}'. {install_hint}"
+    )
+
+
+def _import_optional_module(module_name: str, feature_name: str, install_hint: str):
+    try:
+        return importlib.import_module(module_name)
+    except ModuleNotFoundError as exc:
+        raise _optional_dependency_error(module_name, feature_name, install_hint) from exc
+
+
+def _import_optional_attr(module_name: str, attr_name: str, feature_name: str, install_hint: str):
+    module = _import_optional_module(module_name, feature_name, install_hint)
+    try:
+        return getattr(module, attr_name)
+    except AttributeError as exc:
+        raise ImportError(
+            f"{feature_name} expected '{attr_name}' inside module '{module_name}', but it was not found."
+        ) from exc
+
+
+def _require_dm_control_suite():
+    return _import_optional_module(
+        "dm_control.suite",
+        "DeepMind Control environments",
+        "Install the DMC dependencies from environment.yml before running DMC training or smoke tests.",
+    )
 
 
 def _obs_dict_to_space(obs: Dict[str, np.ndarray]) -> spaces.Dict:
@@ -104,6 +130,7 @@ class DMCGym(gym.Env):
     # Internal helpers
     # ---------------------------
     def _build_env(self, seed: int):
+        suite = _require_dm_control_suite()
         self.env = suite.load(
             domain_name=self.domain,
             task_name=self.task,
@@ -191,7 +218,11 @@ def make_dmc_env(domain,task,obs_config, seed=0,render_size = (128,128),n_sub_st
   
     
 def make_metaworld_env(env_name,obs_config,seed=0,camera_to_render='corner4',reward_scale = 1.0, step_penality = 0.01,max_steps = 400,sparse_reward = False):
-    
+    _import_optional_module(
+        "metaworld",
+        "Metaworld environments",
+        "Install the optional Metaworld dependency or stay on the DMC-only submission path.",
+    )
     env = gym.make('Meta-World/MT1', env_name=env_name, seed=seed,render_mode="rgb_array",camera_name=camera_to_render)
     env = MetaworldWrapper(env,obs_config,reward_scale,step_penality,max_steps,sparse_reward)
     env = gym.wrappers.RecordEpisodeStatistics(env)
@@ -268,7 +299,13 @@ class MyoSuiteWrapper(gym.Wrapper):
         self.is_sparse_reward = is_sparse_reward
         self.camera_id_render = camera_id_render
         self.camera_size = camera_size
-        self.renderer = MJRenderer(env.unwrapped.sim)
+        mj_renderer_cls = _import_optional_attr(
+            "myosuite.renderer.mj_renderer",
+            "MJRenderer",
+            "MyoSuite rendering",
+            "Install the optional MyoSuite dependency before running MyoSuite experiments.",
+        )
+        self.renderer = mj_renderer_cls(env.unwrapped.sim)
                 
     def _parse_obs(self,obs):
         final_obs = []
@@ -356,6 +393,11 @@ class HighwayWeatherWrapper(gym.Wrapper):
         self.action_space = env.action_space
         self.env_category = 'highway'
         self.max_steps = int(self.unwrapped.config['duration'] *  self.unwrapped.config["policy_frequency"])
+        self._cv2 = _import_optional_module(
+            "cv2",
+            "Highway weather rendering",
+            "Install opencv-python before rendering Highway weather environments.",
+        )
         print("MAX STEPS", self.max_steps)
         self.current_weather = self.CLEAR
         if weather_probs is None:
@@ -410,11 +452,11 @@ class HighwayWeatherWrapper(gym.Wrapper):
         text_main = f"Weather: {weather_name}"
         text_sub = f"Left: {self.steps_remaining}"
         color = self.WEATHER_COLORS[self.current_weather]
-        cv2.putText(frame, text_main, (10, 15), 
-                    cv2.FONT_HERSHEY_SIMPLEX, 0.35, color, 1, cv2.LINE_AA)
+        self._cv2.putText(frame, text_main, (10, 15), 
+                    self._cv2.FONT_HERSHEY_SIMPLEX, 0.35, color, 1, self._cv2.LINE_AA)
             
-        cv2.putText(frame, text_sub, (10, 28), 
-                        cv2.FONT_HERSHEY_SIMPLEX, 0.25, (220, 220, 220), 1, cv2.LINE_AA)
+        self._cv2.putText(frame, text_sub, (10, 28), 
+                        self._cv2.FONT_HERSHEY_SIMPLEX, 0.25, (220, 220, 220), 1, self._cv2.LINE_AA)
         return frame
     
     def _set_perception_distance(self,weather_type:int):
@@ -453,6 +495,11 @@ class HighwayWeatherWrapper(gym.Wrapper):
 
 
 def make_highway_env(env_name,obs_config,seed=0, env_config = None,render_mode = 'rgb_array', flatten_obs = False):
+    _import_optional_module(
+        "highway_env",
+        "Highway environments",
+        "Install the optional HighwayEnv dependency before running highway experiments.",
+    )
     env = gym.make(env_name, config=env_config,render_mode=render_mode)
     env = HighwayEnvWrapper(env,obs_config,flatten_obs)
     env = gym.wrappers.RecordEpisodeStatistics(env)
@@ -464,17 +511,15 @@ def make_highway_weather(
     env_config,
     seed=0
 ):
+    _import_optional_module(
+        "highway_env",
+        "Highway weather environments",
+        "Install the optional HighwayEnv dependency before running highway experiments.",
+    )
     env = gym.make(env_name, render_mode="rgb_array", config=env_config)
     env = HighwayWeatherWrapper(env,weather_probs)
     env = gym.wrappers.RecordEpisodeStatistics(env)
     return env
-
-
-
-import numpy as np
-import gymnasium as gym
-from collections import deque
-from third_party.customized_box2d.HybridBipedalWalker import HybridBipedalWalker
 
 class HybridWalkerWrapper(gym.Wrapper):
     def __init__(self, env, stack_frames=4,max_steps=1000):
@@ -488,19 +533,19 @@ class HybridWalkerWrapper(gym.Wrapper):
         self.stack_frames = stack_frames
         self.max_steps = max_steps
         
-        # 使用 deque 作为固定长度的帧缓冲区
+        # Use a deque as a fixed-length frame buffer
         self.frames = deque(maxlen=stack_frames)
         
         # --- Flatten & Stack Action/Observation Space Setup ---
         self.action_space = env.action_space
         
-        # 原环境的 obs shape 是 (24,)
-        # Stack 之后的 obs shape 应该是 (24 * k,)
-        # 我们需要扩展 observation_space 的定义，否则 RL 算法可能会报错维度不匹配
+        # The original observation shape is (24,)
+        # After stacking, the observation shape should be (24 * k,)
+        # Expand observation_space accordingly to avoid dimension mismatch errors in RL code
         src_low = self.env.observation_space.low
         src_high = self.env.observation_space.high
         
-        # np.tile 将原有的 limit 重复 k 次
+        # Repeat the original bounds k times with np.tile
         stacked_low = np.tile(src_low, stack_frames)
         stacked_high = np.tile(src_high, stack_frames)
         
@@ -514,21 +559,21 @@ class HybridWalkerWrapper(gym.Wrapper):
 
     def _get_flattened_obs(self):
         """
-        将 deque 中的 k 个帧 (每个 24 维) 拼接并 Flatten 成一个 (24*k,) 的向量
+        Concatenate the k frames in the deque (24 dims each) into a flat (24*k,) vector.
         """
-        # list(self.frames) 返回 [array(24,), array(24,), ...]
-        # np.concatenate 在 axis 0 拼接，结果为 array(96,)
+        # list(self.frames) returns [array(24,), array(24,), ...]
+        # np.concatenate joins them on axis 0, producing array(96,)
         return np.concatenate(list(self.frames), axis=0)
 
     def reset(self, seed=None, options=None):
         self.step_count = 0
         
-        # 获取初始帧
+        # Get the initial frame
         obs, info = self.env.reset(seed=seed, options=options)
         
-        # Reset 时，因为没有历史帧，我们用初始帧填满缓冲区
-        # 这样 Learner 在 t=0 时看到的 input 是 [s0, s0, s0, s0]
-        # 能够避免冷启动时的 zeros padding 带来的分布偏移
+        # On reset there is no history, so fill the buffer with the initial frame
+        # This makes the learner input at t=0 equal to [s0, s0, s0, s0]
+        # and avoids distribution shift from zero padding during cold start
         for _ in range(self.stack_frames):
             self.frames.append(obs)
             
@@ -538,13 +583,13 @@ class HybridWalkerWrapper(gym.Wrapper):
     def step(self, action):
         self.step_count += 1
         
-        # 执行动作
+        # Execute the action
         obs, reward, terminated, truncated, info = self.env.step(action)
         
-        # 将新的一帧推入 buffer (最老的帧会自动弹出)
+        # Push the new frame into the buffer; the oldest frame is evicted automatically
         self.frames.append(obs)
         
-        # 获取 Flatten 后的 Stacked Frame
+        # Get the flattened stacked frame
         final_obs = self._get_flattened_obs()
         if self.step_count >= self.max_steps:
             terminated = True
@@ -560,7 +605,13 @@ class HybridWalkerWrapper(gym.Wrapper):
 
 
 def make_hybrid_walker(mode="learner",stack_frames=4,max_steps=1000):
-    env = HybridBipedalWalker(mode=mode,render_mode="rgb_array")
+    hybrid_walker_cls = _import_optional_attr(
+        "third_party.customized_box2d.HybridBipedalWalker",
+        "HybridBipedalWalker",
+        "Box2D hybrid walker environments",
+        "Install the Box2D dependencies and keep third_party/customized_box2d available before running Box2D experiments.",
+    )
+    env = hybrid_walker_cls(mode=mode,render_mode="rgb_array")
     env = HybridWalkerWrapper(env,stack_frames=stack_frames,max_steps=max_steps)
     env = gym.wrappers.RecordEpisodeStatistics(env)
     return env
@@ -575,17 +626,17 @@ class HybridLanderWrapper(gym.Wrapper):
         super().__init__(env)
         self.stack_frames = stack_frames
         self.max_steps = max_steps
-        # 使用 deque 作为一个固定长度的滑动窗口 (FIFO)
+        # Use a deque as a fixed-length sliding window (FIFO)
         self.frames = deque(maxlen=stack_frames)
         
         self.action_space = env.action_space
         
         # --- Observation Space Flattening ---
-        # 原本 Obs Shape: (8,) -> Stack 后: (8 * k,)
+        # Original obs shape: (8,) -> after stacking: (8 * k,)
         src_low = self.env.observation_space.low
         src_high = self.env.observation_space.high
         
-        # 将原本的 bound 重复 k 次
+        # Repeat the original bounds k times
         stacked_low = np.tile(src_low, stack_frames)
         stacked_high = np.tile(src_high, stack_frames)
         
@@ -595,25 +646,25 @@ class HybridLanderWrapper(gym.Wrapper):
             dtype=self.env.observation_space.dtype
         )
         
-        # 标记环境类别，方便后续做特定处理
+        # Tag the environment category for downstream special handling
         self.env_category = 'box2d_hybrid_lander'
 
     def _get_flattened_obs(self):
         """
-        将 deque 中的 k 个帧拼接成一个长向量
+        Concatenate the k frames in the deque into one long vector.
         Return shape: (32,) if k=4
         """
         return np.concatenate(list(self.frames), axis=0)
 
     def reset(self, seed=None, options=None):
         """
-        Reset 环境并用初始帧填满 Buffer
+        Reset the environment and fill the buffer with the initial frame.
         """
         self.step_count = 0
         obs, info = self.env.reset(seed=seed, options=options)
         
-        # 冷启动：用第一帧填满整个 buffer
-        # 这样 t=0 时 Learner 看到的是静止状态 [s0, s0, s0, s0]
+        # Cold start: fill the entire buffer with the first frame
+        # so the learner sees the stationary state [s0, s0, s0, s0] at t=0
         for _ in range(self.stack_frames):
             self.frames.append(obs)
             
@@ -621,20 +672,20 @@ class HybridLanderWrapper(gym.Wrapper):
 
     def step(self, action):
         """
-        执行一步，推入新帧，并计算 is_success
+        Take one step, push the new frame, and compute is_success.
         """
         self.step_count += 1
         obs, reward, terminated, truncated, info = self.env.step(action)
         
-        # 推入新的一帧，最老的一帧自动弹出
+        # Push the new frame; the oldest frame is evicted automatically
         self.frames.append(obs)
         
-        # 获取 Flatten 后的 Stacked Frame
+        # Get the flattened stacked frame
         final_obs = self._get_flattened_obs()
         
         # --- Success Metric ---
-        # LunarLander 的逻辑：如果 lander.awake 为 False (休眠/静止)，
-        # 且没有 crash (-100)，step reward 会被设为 +100。
+        # LunarLander logic: if lander.awake is False (sleeping/stationary)
+        # and there was no crash (-100), the step reward is set to +100.
         info['is_success'] = False
         if terminated and reward == 100: 
              info['is_success'] = True
@@ -648,9 +699,14 @@ class HybridLanderWrapper(gym.Wrapper):
     
     def close(self):
         self.unwrapped.close()
-from third_party.customized_box2d.HybridLunarLand import HybridLunarLander
 def make_hybrid_lander(mode="learner",stack_frames=4,max_steps=1000):
-    env = HybridLunarLander(mode=mode,render_mode="rgb_array")
+    hybrid_lander_cls = _import_optional_attr(
+        "third_party.customized_box2d.HybridLunarLand",
+        "HybridLunarLander",
+        "Box2D hybrid lander environments",
+        "Install the Box2D dependencies and keep third_party/customized_box2d available before running Box2D experiments.",
+    )
+    env = hybrid_lander_cls(mode=mode,render_mode="rgb_array")
     env = HybridLanderWrapper(env,stack_frames=stack_frames)
     env = gym.wrappers.RecordEpisodeStatistics(env)
     return env
@@ -691,9 +747,14 @@ class HybridCarVectorWrapper(gym.Wrapper):
         self.frames.append(obs)
         return self._get_flattened_obs(), reward, terminated, truncated, info
 
-from third_party.customized_box2d.HybridCar import HybridCarRacing
 def make_hybrid_car_racing(mode="learner",stack_frames=4,max_steps=1000):
-    env = HybridCarRacing(mode=mode,render_mode="rgb_array")
+    hybrid_car_cls = _import_optional_attr(
+        "third_party.customized_box2d.HybridCar",
+        "HybridCarRacing",
+        "Box2D hybrid car racing environments",
+        "Install the Box2D dependencies and keep third_party/customized_box2d available before running Box2D experiments.",
+    )
+    env = hybrid_car_cls(mode=mode,render_mode="rgb_array")
     env = HybridCarVectorWrapper(env,stack_frames=stack_frames,max_steps=max_steps)
     env = gym.wrappers.RecordEpisodeStatistics(env)
     return env
@@ -733,11 +794,15 @@ class HybridWeatherVectorWrapper(gym.Wrapper):
 
     def close(self):
         self.unwrapped.close()
-
-from third_party.customized_box2d.HybridWeather import HybridWeather    
 def make_hybrid_weather(mode="learner",stack_frames=4,max_steps=2000):
+    hybrid_weather_cls = _import_optional_attr(
+        "third_party.customized_box2d.HybridWeather",
+        "HybridWeather",
+        "Box2D hybrid weather environments",
+        "Install the Box2D dependencies and keep third_party/customized_box2d available before running Box2D experiments.",
+    )
     assert mode in ["learner", "Sunny", "Rainy","Foggy"]
-    env = HybridWeather(mode=mode,render_mode="rgb_array")
+    env = hybrid_weather_cls(mode=mode,render_mode="rgb_array")
     env = HybridWeatherVectorWrapper(env,stack_frames=stack_frames,max_steps=max_steps)
     env = gym.wrappers.RecordEpisodeStatistics(env)
     return env

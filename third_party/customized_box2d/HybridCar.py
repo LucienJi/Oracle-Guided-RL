@@ -49,10 +49,10 @@ LIDAR_FOV = 3.14159
 # --- Vehicle Configs ---
 # --- 1. Vehicle Configs (Learner Fixed) ---
 VEHICLE_CONFIGS = {
-    # Oracle 1: 抓地力怪兽 (AWD, High Grip)
+    # Oracle 1: Grip monster (AWD, High Grip)
     "Racer": {
-        "engine_power_mul": 100_000_000,   # <--- 修改了这里
-        "friction_limit_mul": 1_000_000,   # <--- 修改了这里
+        "engine_power_mul": 100_000_000,   # <--- modified here
+        "friction_limit_mul": 1_000_000,   # <--- modified here
         "wheel_moment": 4_000,
         "hull_poly": [(-60, +130), (+60, +130), (+60, -90), (-60, -90)],
         "wheel_pos": [(-55, +80), (+55, +80), (-55, -82), (+55, -82)],
@@ -60,10 +60,10 @@ VEHICLE_CONFIGS = {
         "size": 0.02,
         "color": (200, 0, 0)
     },
-    # Oracle 2: 漂移大师 (RWD, Slippery)
+    # Oracle 2: Drift master (RWD, Slippery)
     "Drifter": {
-        "engine_power_mul": 80_000_000,    # <--- 修改了这里
-        "friction_limit_mul": 600_000,     # <--- 修改了这里
+        "engine_power_mul": 80_000_000,    # <--- modified here
+        "friction_limit_mul": 600_000,     # <--- modified here
         "wheel_moment": 2_000,
         "hull_poly": [(-40, +150), (+40, +150), (+40, -100), (-40, -100)],
         "wheel_pos": [(-40, +100), (+40, +100), (-40, -80), (+40, -80)],
@@ -71,10 +71,10 @@ VEHICLE_CONFIGS = {
         "size": 0.02,
         "color": (0, 0, 200)
     },
-    # Oracle 3: 重型巴士 (FWD, Heavy, Stable)
+    # Oracle 3: Heavy bus (FWD, Heavy, Stable)
     "Bus": {
-        "engine_power_mul": 60_000_000,    # <--- 修改了这里
-        "friction_limit_mul": 1_500_000,   # <--- 修改了这里
+        "engine_power_mul": 60_000_000,    # <--- modified here
+        "friction_limit_mul": 1_500_000,   # <--- modified here
         "wheel_moment": 8_000,
         "hull_poly": [(-80, +200), (+80, +200), (+80, -200), (-80, -200)],
         "wheel_pos": [(-80, +150), (+80, +150), (-80, -150), (+80, -150)],
@@ -82,10 +82,10 @@ VEHICLE_CONFIGS = {
         "size": 0.02,
         "color": (200, 200, 0)
     },
-    # Learner: 原型车 (Fixed Config)
+    # Learner: Prototype car (fixed config)
     "Prototype": {
-        "engine_power_mul": 60_000_000,    # <--- 修改了这里
-        "friction_limit_mul": 600_000,     # <--- 修改了这里
+        "engine_power_mul": 60_000_000,    # <--- modified here
+        "friction_limit_mul": 600_000,     # <--- modified here
         "wheel_moment": 4_000,
         "hull_poly": [(-50, +140), (+50, +140), (+50, -100), (-50, -100)],
         "wheel_pos": [(-50, +90), (+50, +90), (-50, -90), (+50, -90)],
@@ -202,7 +202,7 @@ class DynamicCar:
         SIZE = self.cfg["size"]
         for w in self.wheels:
             # Steer Joint
-            # === 修复点 1: 确保计算结果转为 float ===
+            # === Fix 1: ensure the computed result is cast to float ===
             dir_sign = np.sign(w.steer - w.joint.angle)
             val = abs(w.steer - w.joint.angle)
             w.joint.motorSpeed = float(dir_sign * min(50.0 * val, 3.0))
@@ -252,7 +252,7 @@ class DynamicCar:
             elif w.omega < -MAX_WHEEL_OMEGA:
                 w.omega = -MAX_WHEEL_OMEGA
             
-            # === 修复点 2: ApplyForceToCenter 也需要 float tuple ===
+            # === Fix 2: ApplyForceToCenter also needs a float tuple ===
             w.ApplyForceToCenter(
                 (
                     float(p_force * side[0] + f_force * forw[0]), 
@@ -450,9 +450,9 @@ class HybridCarRacing(gym.Env, EzPickle):
         self.lidar_points = [] # For rendering
         
         for i in range(LIDAR_RAYS):
-            # === 修复：添加 + math.pi/2 ===
-            # 原逻辑: car_angle - FOV/2 ... (中心在 +X)
-            # 新逻辑: car_angle + 90度 - FOV/2 ... (中心在 +Y，即车头)
+            # === Fix: add + math.pi / 2 ===
+            # Old logic: car_angle - FOV/2 ... (centered on +X)
+            # New logic: car_angle + 90 degrees - FOV/2 ... (centered on +Y, i.e. the car heading)
             angle = (car_angle + math.pi/2) - LIDAR_FOV/2 + (LIDAR_FOV * i / (LIDAR_RAYS - 1))
             # ============================
             
@@ -463,7 +463,7 @@ class HybridCarRacing(gym.Env, EzPickle):
             self.world.RayCast(callback, p1, p2)
             lidar_readings.append(callback.fraction)
             
-            # 可视化逻辑优化：画出实际击中点，如果没有击中则画到最大射程
+            # Visualization improvement: draw the actual hit point, or max range if nothing is hit
             if callback.point:
                 self.lidar_points.append(callback.point)
             else:

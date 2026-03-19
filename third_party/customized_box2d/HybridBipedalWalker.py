@@ -6,7 +6,7 @@ from gymnasium.error import DependencyNotInstalled
 from gymnasium.utils import EzPickle
 import Box2D
 from Box2D.b2 import (
-    circleShape,      # <--- 添加这个
+    circleShape,      # <--- added this
     edgeShape,
     fixtureDef,
     polygonShape,
@@ -279,9 +279,9 @@ class HybridBipedalWalker(gym.Env, EzPickle):
                 self.terrain.append(t)
 
             elif state == STAIRS and oneshot:
-                # === 修复问题 2: 智能决定台阶方向，避免无限上升 ===
-                # 如果当前高度比基准高度高太多 (比如高出 20个单位)，强制向下
-                # 如果低太多，强制向上。否则随机。
+                # === Fix 2: choose stair direction intelligently to avoid climbing forever ===
+                # If the current height is far above the reference height (for example 20 units),
+                # force the stairs downward. If it is too low, force them upward. Otherwise randomize.
                 if y > TERRAIN_HEIGHT + 15 * TERRAIN_STEP:
                     stair_height = -1
                 elif y < TERRAIN_HEIGHT - 3 * TERRAIN_STEP:
@@ -320,18 +320,18 @@ class HybridBipedalWalker(gym.Env, EzPickle):
                 ground_steps_left -= 1
             
             if not force_grass_zone and counter == 0:
-                # 随机生成一段缓冲区域长度
+                # Randomly generate the length of the buffer zone
                 counter = self.np_random.integers(TERRAIN_GRASS / 2, TERRAIN_GRASS)
                 
-                # === 修复问题 1: 强制缓冲逻辑 ===
-                # 如果当前状态是障碍物（非草地），下一个状态必须强制切回草地！
-                # 这保证了障碍物之间永远有间隔。
+                # === Fix 1: enforce the buffer logic ===
+                # If the current state is an obstacle (not grass), force the next state back to grass.
+                # This guarantees spacing between obstacles.
                 if state != GRASS:
                     state = GRASS
                     oneshot = True
                 
                 else:
-                    # 如果当前是草地，说明缓冲期结束，可以生成新的障碍物了
+                    # If the current state is grass, the buffer period is over and a new obstacle can be generated
                     if not force_grass_zone:
                         if self.mode == "learner":
                             if ground_is_ice:
@@ -628,7 +628,7 @@ class HybridBipedalWalker(gym.Env, EzPickle):
 
         pygame.transform.scale(self.surf, (SCALE, SCALE))
 
-        # 1. 绘制天空 (Sky)
+        # 1. Draw the sky
         pygame.draw.polygon(
             self.surf,
             color=(215, 215, 255),
@@ -640,7 +640,7 @@ class HybridBipedalWalker(gym.Env, EzPickle):
             ],
         )
 
-        # 2. 绘制云朵 (Clouds)
+        # 2. Draw the clouds
         for poly, x1, x2 in self.cloud_poly:
             if x2 < self.scroll / 2:
                 continue
@@ -659,22 +659,22 @@ class HybridBipedalWalker(gym.Env, EzPickle):
                 (255, 255, 255),
             )
 
-        # 3. 绘制地面 (Terrain) - 包含摩擦力可视化逻辑
+        # 3. Draw the terrain, including friction visualization
         for i, (poly, fric) in enumerate(self.terrain_poly):
             if poly[1][0] < self.scroll:
                 continue
             if poly[0][0] > self.scroll + VIEWPORT_W / SCALE:
                 continue
             
-            # --- 核心修改：根据 terrain_properties 改变填充颜色 ---
-            # 默认绿色
+            # --- Core change: set fill color based on terrain_properties ---
+            # Default to green
             color = (102, 153, 76)
             
             if fric is not None:
-                # 冰面 (Ice): 淡蓝色填充
+                # Ice: fill with light blue
                 if fric <= self.FRICTION_ICE + 0.01:
                     color = (180, 220, 255)
-                # 高摩擦 (Grip): 深褐色填充
+                # High-grip terrain: fill with dark brown
                 elif fric >= self.FRICTION_GRIP - 0.01:
                     color = (100, 50, 10)
             # --------------------------------------------------
@@ -686,7 +686,7 @@ class HybridBipedalWalker(gym.Env, EzPickle):
             pygame.draw.polygon(self.surf, color=color, points=scaled_poly)
             gfxdraw.aapolygon(self.surf, scaled_poly, color)
 
-        # 4. 绘制 Lidar 射线
+        # 4. Draw the lidar rays
         self.lidar_render = (self.lidar_render + 1) % 100
         i = self.lidar_render
         if i < 2 * len(self.lidar):
@@ -704,7 +704,7 @@ class HybridBipedalWalker(gym.Env, EzPickle):
                     width=1,
                 )
 
-        # 5. 绘制刚体 (Hull, Legs, 地面边缘线)
+        # 5. Draw the rigid bodies (hull, legs, terrain edge lines)
         for obj in self.drawlist:
             for f in obj.fixtures:
                 trans = f.body.transform
@@ -739,7 +739,7 @@ class HybridBipedalWalker(gym.Env, EzPickle):
                             color=obj.color1,
                         )
 
-        # 6. 绘制终点旗帜 (Flag)
+        # 6. Draw the finish flag
         finish_i = min(TERRAIN_LENGTH, len(self.terrain_y) - 1)
         flagy1 = self.terrain_y[finish_i] * SCALE
 

@@ -141,3 +141,158 @@ Files changed:
 - Updated `model/simba_share.py`
 - Updated `scripts/update_config_paths.py`
 - Updated `scripts/test.py`
+
+## 2026-03-18 18:50:02 CDT - Batch 6 - Translate Chinese comments to English
+
+Objective:
+- Translate Chinese comments/docstrings in tracked repo files into English without changing runtime behavior.
+
+Key findings:
+- Chinese text was confined to a small set of tracked Python, YAML, and shell files.
+- `config/base_configs/bc_box2d.yaml` contained a malformed stray first line unrelated to the translation request; it was removed to restore a valid YAML header.
+- After the edit pass, a tracked-file scan found no remaining Han characters anywhere in tracked text files.
+
+Files changed:
+- Added `docs/codex_plan.md`
+- Updated `algo/algo_utils.py`
+- Updated `config/base_configs/bc_box2d.yaml`
+- Updated `config/paths_local.yaml.example`
+- Updated `env/env_utils.py`
+- Updated `install.sh`
+- Updated `model/simba_base.py`
+- Updated `third_party/customized_box2d/HybridBipedalWalker.py`
+- Updated `third_party/customized_box2d/HybridCar.py`
+- Updated `third_party/customized_box2d/HybridLunarLand.py`
+- Updated `third_party/customized_box2d/HybridWeather.py`
+- Updated `docs/codex_worklog.md`
+
+Commands run:
+- `python - <<'PY' ... git ls-files tracked-file Han scan ... PY`
+- `sed -n '1,220p' config/base_configs/bc_box2d.yaml`
+- `sed -n '220,245p' algo/algo_utils.py`
+- `sed -n '485,645p' env/env_utils.py`
+- `sed -n '1,110p' install.sh`
+- `sed -n '1,80p' model/simba_base.py`
+- `sed -n '1,20p' third_party/customized_box2d/HybridBipedalWalker.py`
+- `sed -n '275,760p' third_party/customized_box2d/HybridBipedalWalker.py`
+- `sed -n '48,95p' third_party/customized_box2d/HybridCar.py`
+- `sed -n '40,520p' third_party/customized_box2d/HybridCar.py`
+- `sed -n '220,360p' third_party/customized_box2d/HybridLunarLand.py`
+- `sed -n '140,520p' third_party/customized_box2d/HybridWeather.py`
+- `python -m compileall algo/algo_utils.py env/env_utils.py model/simba_base.py third_party/customized_box2d/HybridBipedalWalker.py third_party/customized_box2d/HybridCar.py third_party/customized_box2d/HybridLunarLand.py third_party/customized_box2d/HybridWeather.py`
+- `bash -n install.sh`
+- `sed -n '1,5p' config/base_configs/bc_box2d.yaml`
+
+Validation result:
+- Repo-wide tracked-file Han scan returned `NO_HAN_TEXT_FOUND`
+- `python -m compileall ...` passed for all changed Python files
+- `bash -n install.sh` passed
+
+Outcome:
+- Translated all discovered Chinese comments/docstrings to English across tracked files.
+- Translated the remaining Chinese install-script messages to English so tracked files are free of Han text.
+- Deviation from the original plan: removed a malformed stray header line from `config/base_configs/bc_box2d.yaml` because the scan exposed invalid file content and leaving it in place would keep the config broken.
+
+Next step:
+- No further repository changes are required for this task unless a narrower translation style pass is requested.
+
+Blockers:
+- None
+
+## 2026-03-18 19:21:46 CDT - Batch 7 - DMC submission path hardening
+
+Objective:
+- Prepare the DMC-only review path so the main entry points are importable without optional benchmark dependencies and add a concrete local smoke/demo path.
+
+Key findings:
+- `env/env_utils.py` eagerly imported optional benchmark packages and Box2D modules at import time, which would break the DMC-only submission path before any CLI help or config loading could happen.
+- The tracked docs referenced `setup_paths.sh`, but the script was missing from the repository.
+- The current shell still does not provide `pytest`, so runtime validation remains limited to static checks here.
+
+Files changed:
+- Updated `docs/codex_plan.md`
+- Updated `env/env_utils.py`
+- Updated `scripts/train_simba.py`
+- Updated `scripts/train_CurrimaxAdv.py`
+- Added `scripts/smoke_dmc.py`
+- Added `config/dmc/submission_smoke_cartpole.yaml`
+- Added `config/dmc/submission_currimaxadv_smoke.yaml`
+- Added `setup_paths.sh`
+- Added `tests/test_submission_package.py`
+- Updated `docs/codex_worklog.md`
+
+Commands run:
+- `sed -n '1,80p' env/env_utils.py`
+- `sed -n '180,320p' env/env_utils.py`
+- `sed -n '430,560p' env/env_utils.py`
+- `sed -n '1,140p' scripts/train_simba.py`
+- `sed -n '1,220p' scripts/train_CurrimaxAdv.py`
+- `python -m compileall env/env_utils.py scripts/train_simba.py scripts/train_CurrimaxAdv.py scripts/smoke_dmc.py tests/test_submission_package.py`
+- `bash -n setup_paths.sh`
+- `python -m pytest tests/test_submission_package.py -q`
+
+Validation result:
+- `python -m compileall ...` passed for the updated DMC entrypoints, smoke script, and test file
+- `bash -n setup_paths.sh` passed
+- `python -m pytest tests/test_submission_package.py -q` could not run because `pytest` is not installed in the current shell (`/usr/bin/python: No module named pytest`)
+
+Outcome:
+- The DMC review path now defers optional dependency imports until the corresponding benchmark factories are used.
+- Added a review-facing smoke script, two submission configs, and the missing tracked path-setup helper.
+- Added proportional tests for the submission package shape, pending a shell with `pytest` installed.
+
+Next step:
+- Rewrite the professor-facing README/report/checklist and add the representative Slurm/example documentation.
+
+Blockers:
+- `pytest` is unavailable in the current shell
+
+## 2026-03-18 19:25:42 CDT - Batch 8 - Professor-facing docs and validation
+
+Objective:
+- Finish the DMC-only submission package with professor-facing documentation, a representative Slurm script, and a final validation pass.
+
+Key findings:
+- `config/paths.yaml` documented a `paths_local.yaml` override path but did not actually consult `paths_local.project_root`; the config was updated so the tracked `setup_paths.sh` helper now has a real effect.
+- CLI help for the new entry points could not be exercised in the current shell because `hydra` is not installed here.
+- Static validation succeeded for the edited Python and shell entry points; runtime-heavy validation still requires the project Conda environment.
+
+Files changed:
+- Updated `config/paths.yaml`
+- Updated `README.md`
+- Updated `INSTALL.md`
+- Added `examples/README.md`
+- Added `slurm/dmc_train_simba.sbatch`
+- Added `report_draft.md`
+- Added `SUBMISSION_CHECKLIST.md`
+- Updated `docs/codex_worklog.md`
+
+Commands run:
+- `python -m compileall env/env_utils.py scripts/train_simba.py scripts/train_CurrimaxAdv.py scripts/smoke_dmc.py tests/test_submission_package.py`
+- `bash -n setup_paths.sh`
+- `bash -n slurm/dmc_train_simba.sbatch`
+- `python -m scripts.train_simba --help`
+- `python -m scripts.train_CurrimaxAdv --help`
+- `python -m scripts.smoke_dmc --help`
+- `python -m pytest tests/test_submission_package.py -q`
+- `bash setup_paths.sh`
+- `sed -n '1,20p' config/paths_local.yaml`
+
+Validation result:
+- `python -m compileall ...` passed
+- `bash -n setup_paths.sh` passed
+- `bash -n slurm/dmc_train_simba.sbatch` passed
+- `bash setup_paths.sh` succeeded and wrote `config/paths_local.yaml`
+- `python -m scripts.train_simba --help`, `python -m scripts.train_CurrimaxAdv --help`, and `python -m scripts.smoke_dmc --help` failed because `hydra` is not installed in the current shell
+- `python -m pytest tests/test_submission_package.py -q` failed because `pytest` is not installed in the current shell
+
+Outcome:
+- Added a complete professor-facing DMC submission package: narrowed README, installation notes, example commands, report draft, Slurm script, and checklist.
+- The path setup helper is now functionally connected to `config/paths.yaml`.
+- The package is ready for review from a repository-organization perspective, with explicit notes about what was and was not verified.
+
+Next step:
+- Activate the `oracles` Conda environment and rerun the CLI help, smoke test, and pytest commands if environment-backed verification is required before handing off the package.
+
+Blockers:
+- The current shell is missing `hydra` and `pytest`

@@ -1,0 +1,41 @@
+# @package _global_
+defaults:
+  - /base_configs/simba_dmc
+  - _self_
+
+method_name: "Submission_SIMBA_Smoke"
+seed: 0
+
+env:
+  domain_name: "cartpole"
+  task_name: "swingup_sparse"
+  render_size: [128, 128]
+  n_sub_steps: 1
+  seed: ${seed}
+
+obs_config:
+  position: [3]
+  velocity: [2]
+
+run_name: "${method_name}_${env.domain_name}_${env.task_name}_seed${seed}"
+
+smoke:
+  workflow: "simba"
+  num_steps: 5
+
+training:
+  total_timesteps: 1000
+  learning_starts: 8
+  batch_size: 32
+  capacity: 256
+  utd_ratio: 1
+  eval_every: 250
+  eval_episodes: 1
+  save_freq: 250
+  save_video_every: 100000
+  resume: false
+  use_wandb: false
+  save_video: false
+  use_compile: false
+  save_episodes_to_disk: false
+  keep_checkpoint_num: 2

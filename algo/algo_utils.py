@@ -225,13 +225,13 @@ def extend_and_repeat(data, dim: int, repeat: int):
 
 
 def deep_copy_dict_with_tensors(d):
-    """深拷贝包含torch.Tensor的字典"""
+    """Deep copy a dictionary that may contain torch.Tensor values."""
     result = {}
     for key, value in d.items():
         if isinstance(value, torch.Tensor):
             result[key] = value.clone()
         elif isinstance(value, dict):
-            result[key] = deep_copy_dict_with_tensors(value)  # 递归处理嵌套字典
+            result[key] = deep_copy_dict_with_tensors(value)  # Recursively handle nested dictionaries
         else:
             result[key] = copy.deepcopy(value)
     return result

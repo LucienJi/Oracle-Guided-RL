@@ -24,7 +24,7 @@ import re
 def l2normalize_network(
     network: nn.Module,
     eps: float = 1e-8,
-    regex: str = None  # 可选：如果你只想归一化特定名称的层
+    regex: str = None  # Optional: only normalize layers whose names match this regex
 ) -> nn.Module:
     """
     In-place L2 normalization for all HyperDense layers in the network.
@@ -32,29 +32,28 @@ def l2normalize_network(
     params = tree_map_until_match(f=l2normalize_layer, tree=params, target_re=regex)
     """
     
-    # 既然是修改权重，我们不需要计算梯度
+    # We are modifying weights in-place, so gradients are not needed
     with torch.no_grad():
         for name, module in network.named_modules():
-            # 1. 检查是否是我们定义的 HyperDense 层
+            # 1. Check whether this is a HyperDense layer
             if isinstance(module, HyperDense):
                 
-                # 2. (可选) 如果提供了 regex，检查模块名称是否匹配
-                # PyTorch 的 name 是类似 "encoder.0.mlp.w1" 的路径
+                # 2. Optionally filter by module name if a regex was provided
+                # PyTorch names look like "encoder.0.mlp.w1"
                 if regex and not re.search(regex, name):
                     continue
 
-                # 3. 执行归一化
-                # 注意：PyTorch 的 nn.Linear 权重形状是 (Out, In)
-                # Jax 的 nn.Dense 权重形状是 (In, Out)，且 Jax 代码用了 axis=0 (沿 Input 维度)
-                # 为了数学等价，我们需要在 PyTorch 中沿 dim=1 (In 维度) 进行归一化
+                # 3. Apply normalization
+                # PyTorch nn.Linear weights are shaped (Out, In)
+                # JAX nn.Dense weights are shaped (In, Out) and normalize on axis=0
+                # For mathematical equivalence, normalize PyTorch weights along dim=1
                 
                 weight = module.weight
                 
-                # 计算 L2 范数 (keepdim=True 保持形状为 [Out, 1])
+                # Compute the L2 norm while keeping shape [Out, 1]
                 l2norm = torch.linalg.norm(weight, ord=2, dim=1, keepdim=True)
                 
-                # 原地除法 (In-place division)
-                # 使用 clamp 防止除以 0
+                # In-place division with clamping to avoid division by zero
                 weight.div_(torch.clamp(l2norm, min=eps))
                 
     return network
@@ -475,5 +474,4 @@ class CategoricalValue(nn.Module):
         z = self.encoder(y)
         value, info = self.predictor(z)
         return value, info
-
 

@@ -151,7 +151,7 @@ class DynamicCar:
             w.brake = brake
             w.joint.motorSpeed = float(np.sign(w.steer - w.joint.angle) * min(50.0 * abs(w.steer - w.joint.angle), 3.0))
             
-            # 物理反馈
+            # Physics response
             f_limit = self.friction_limit * 0.6
             if len(w.tiles) > 0:
                 f_limit = max([self.friction_limit * t.road_friction for t in w.tiles])
@@ -332,7 +332,7 @@ class HybridWeather(gym.Env, EzPickle):
         for i in range(LIDAR_RAYS):
             angle = (car_angle + math.pi/2) - LIDAR_FOV/2 + (LIDAR_FOV * i / (LIDAR_RAYS - 1))
             
-            # 安全偏移：防止射线打到自己
+            # Safe offset so the ray does not hit the car itself
             p1 = (car_pos[0] + 0.5 * math.cos(angle), car_pos[1] + 0.5 * math.sin(angle))
             p2 = (car_pos[0] + math.cos(angle)*LIDAR_RANGE, car_pos[1] + math.sin(angle)*LIDAR_RANGE)
             
@@ -345,7 +345,7 @@ class HybridWeather(gym.Env, EzPickle):
                 if active_noise > 0.2 and self.np_random.random() < 0.1: val = 1.0
             
             lidar_readings.append(val)
-            # 关键修复：显式转换 Box2D 向量为元组，防止 render 报错
+            # Critical fix: convert Box2D vectors to tuples explicitly to avoid render errors
             if cb.point:
                 if hasattr(cb.point, "x"):
                     self.lidar_points.append((cb.point.x, cb.point.y))
@@ -469,7 +469,7 @@ class HybridWeather(gym.Env, EzPickle):
         
         for body in [self.car.hull] + self.car.wheels:
             for f in body.fixtures:
-                # 显式提取顶点并构造为 Vector2 以兼容 Pygame
+                # Extract vertices explicitly and build Vector2 objects for Pygame compatibility
                 world_vertices = [(body.transform * v) for v in f.shape.vertices]
                 px = [(pygame.math.Vector2(v[0], v[1]).rotate_rad(angle)*zoom + trans) for v in world_vertices]
                 pygame.draw.polygon(surf, getattr(body, "color", (0,0,0)), px)
@@ -477,7 +477,7 @@ class HybridWeather(gym.Env, EzPickle):
         car_px = pygame.math.Vector2(self.car.hull.position[0], self.car.hull.position[1]).rotate_rad(angle)*zoom + trans
         
         for p in self.lidar_points:
-            # 这里的 p 已经是 tuple (x,y)，安全
+            # Here p is already a safe (x, y) tuple
             p_vec = pygame.math.Vector2(p[0], p[1])
             p_px = p_vec.rotate_rad(angle)*zoom + trans
             pygame.draw.line(surf, (0, 255, 0), car_px, p_px, 1)
@@ -490,7 +490,7 @@ class HybridWeather(gym.Env, EzPickle):
             self.clock.tick(self.metadata["render_fps"])
             pygame.display.flip()
         elif self.render_mode == "rgb_array":
-            # 关键修复：返回图像数据
+            # Critical fix: return image data
             return np.transpose(np.array(pygame.surfarray.pixels3d(surf)), axes=(1, 0, 2))
 
     def close(self):
