@@ -22,7 +22,6 @@ from algo.algo_utils import ObservationNormalizer, RewardNormalizer, reshape_int
 from data_buffer.replay_buffer import ReplayBuffer
 from model.simba import DeterministicSimbaPolicy, SimbaValues
 from model.simba_base import EPS, l2normalize_network
-from model.mlp import OraclePolicyBase
 
 
 class MAPSAlgo(BaseAlgo):
@@ -39,7 +38,7 @@ class MAPSAlgo(BaseAlgo):
         self,
         *,
         learner_actor: DeterministicSimbaPolicy,
-        oracles_actors: Dict[str, OraclePolicyBase],
+        oracles_actors: Dict[str, DeterministicSimbaPolicy],
         oracles_values: Dict[str, SimbaValues],
         args: Dict[str, Any],
         device: torch.device,

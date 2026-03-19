@@ -14,7 +14,6 @@ from algo.algo_utils import ObservationNormalizer, RewardNormalizer, categorical
 from data_buffer.replay_buffer import ReplayBuffer
 from model.simba import DeterministicSimbaPolicy, SimbaCritics, SimbaValues
 from model.simba_base import EPS, l2normalize_network
-from model.mlp import OraclePolicyBase
 
 
 
@@ -22,7 +21,7 @@ class CurrMaxAdv(BaseAlgo):
     def __init__(
         self,
         n_oracles: int,
-        oracles_actors: Dict[str, OraclePolicyBase],
+        oracles_actors: Dict[str, Any],
         oracles_critics: Dict[str, SimbaCritics],
         oracles_values: Dict[str, SimbaValues],
         learner_actor: DeterministicSimbaPolicy,

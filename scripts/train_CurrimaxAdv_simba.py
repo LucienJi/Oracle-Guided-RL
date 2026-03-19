@@ -27,7 +27,7 @@ from env.env_utils import (
 from data_buffer.replay_buffer import ReplayBuffer
 
 
-@hydra.main(config_path="../config", config_name="box2d/CurrimaxAdv_bipedal_learner", version_base=None)
+@hydra.main(config_path="../config", config_name="dmc/CurrimaxAdv_cheetah", version_base=None)
 def train_CurrimaxAdv_simba(cfg: DictConfig):
     from algo.oracles.CurrimaxAdv import CurrMaxAdv
 

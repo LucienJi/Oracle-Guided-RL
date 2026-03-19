@@ -35,15 +35,17 @@ echo "----------------------------------------"
 conda env create -f environment.yml
 
 
+
 echo ""
 echo "Step 2/4: Validate the installation..."
 echo "----------------------------------------"
 
 # Validate key dependencies
-conda run -n oracles python -c "import torch; print(f'✓ PyTorch: {torch.__version__}')" || echo "✗ PyTorch is not installed correctly"
-conda run -n oracles python -c "import torch; print(f'✓ CUDA available: {torch.cuda.is_available()}')" || echo "✗ CUDA check failed"
-conda run -n oracles python -c "import gymnasium; print(f'✓ Gymnasium: {gymnasium.__version__}')" || echo "✗ Gymnasium is not installed correctly"
-conda run -n oracles python -c "import dm_control; print('✓ dm-control installed')" || echo "✗ dm-control is not installed correctly"
+conda run -n opi python -c "import torch; print(f'✓ PyTorch: {torch.__version__}')" || echo "✗ PyTorch is not installed correctly"
+conda run -n opi python -c "import torch; print(f'✓ CUDA available: {torch.cuda.is_available()}')" || echo "✗ CUDA check failed"
+conda run -n opi python -c "import gymnasium; print(f'✓ Gymnasium: {gymnasium.__version__}')" || echo "✗ Gymnasium is not installed correctly"
+conda run -n opi python -c "import dm_control; print('✓ dm-control installed')" || echo "✗ dm-control is not installed correctly"
+
 
 echo ""
 echo "Step 3/4: Environment variable notes..."
@@ -57,9 +59,7 @@ echo "Step 4/4: Installation complete!"
 echo "=========================================="
 echo ""
 echo "Usage:"
-echo "  1. Activate the environment: conda activate oracles"
+echo "  1. Activate the environment: conda activate opi"
 echo "  2. Go to the project directory: cd $SCRIPT_DIR"
 echo "  3. See README.md for the canonical setup / quick start path"
-echo ""
-echo "If you run into issues, see INSTALL.md for detailed instructions."
-echo ""
+

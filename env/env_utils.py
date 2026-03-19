@@ -2,8 +2,7 @@ import importlib
 import os
 os.environ.setdefault("MUJOCO_GL", "egl")
 import random
-from collections import deque
-from typing import Optional, Tuple, Dict, Any, Literal
+from typing import Optional, Tuple, Dict, Any
 
 import gymnasium as gym
 import numpy as np
@@ -46,17 +45,40 @@ def _import_optional_module(module_name: str, feature_name: str, install_hint: s
         raise _optional_dependency_error(module_name, feature_name, install_hint) from exc
 
 
-def _import_optional_attr(module_name: str, attr_name: str, feature_name: str, install_hint: str):
-    module = _import_optional_module(module_name, feature_name, install_hint)
+def _apply_dm_control_mujoco_compat():
+    """Patch dm_control's MjModel and MjData field lists to match current MuJoCo bindings.
+    Newer MuJoCo (e.g. 3.6) renamed/removed fields. Drop or alias sizes so struct_indexer
+    only requests attributes that exist on the installed mujoco structs.
+    """
     try:
-        return getattr(module, attr_name)
-    except AttributeError as exc:
-        raise ImportError(
-            f"{feature_name} expected '{attr_name}' inside module '{module_name}', but it was not found."
-        ) from exc
+        import mujoco
+        from dm_control.mujoco.wrapper import mjbindings
+        sizes = mjbindings.sizes
+        minimal_xml = "<mujoco><worldbody><body><geom type='sphere' size='.1'/></body></worldbody></mujoco>"
+        model = mujoco.MjModel.from_xml_string(minimal_xml)
+        data = mujoco.MjData(model)
+        valid_mjmodel = {a for a in dir(model) if not a.startswith("_")}
+        valid_mjdata = {a for a in dir(data) if not a.startswith("_")}
+        renames_model = [("cam_orthographic", "cam_projection")]
+        mjmodel = sizes.array_sizes.get("mjmodel")
+        if mjmodel is not None:
+            for old_name, new_name in renames_model:
+                if old_name in mjmodel and new_name not in mjmodel and new_name in valid_mjmodel:
+                    mjmodel[new_name] = mjmodel.pop(old_name)
+            for key in list(mjmodel.keys()):
+                if key not in valid_mjmodel:
+                    mjmodel.pop(key, None)
+        mjdata = sizes.array_sizes.get("mjdata")
+        if mjdata is not None:
+            for key in list(mjdata.keys()):
+                if key not in valid_mjdata:
+                    mjdata.pop(key, None)
+    except Exception:
+        pass
 
 
 def _require_dm_control_suite():
+    _apply_dm_control_mujoco_compat()
     return _import_optional_module(
         "dm_control.suite",
         "DeepMind Control environments",
@@ -216,612 +238,6 @@ def make_dmc_env(domain,task,obs_config, seed=0,render_size = (128,128),n_sub_st
     env = DMCWrapper(env,obs_config)
     return env
   
-    
-def make_metaworld_env(env_name,obs_config,seed=0,camera_to_render='corner4',reward_scale = 1.0, step_penality = 0.01,max_steps = 400,sparse_reward = False):
-    _import_optional_module(
-        "metaworld",
-        "Metaworld environments",
-        "Install the optional Metaworld dependency or stay on the DMC-only submission path.",
-    )
-    env = gym.make('Meta-World/MT1', env_name=env_name, seed=seed,render_mode="rgb_array",camera_name=camera_to_render)
-    env = MetaworldWrapper(env,obs_config,reward_scale,step_penality,max_steps,sparse_reward)
-    env = gym.wrappers.RecordEpisodeStatistics(env)
-    return env
-
-class MetaworldWrapper(gym.Wrapper):
-    def __init__(self,env,obs_config,reward_scale = 0.1, step_penality = 1.0,max_steps = 500,sparse_reward = False):
-        super().__init__(env)
-        self.step_count = 0
-        self.obs_config = obs_config ## for metaworld, we only has robot states as observation robot_states: robot_states
-        self.action_space = env.action_space
-        self.reward_scale = reward_scale
-        self.step_penality = step_penality
-        self.env_category = 'metaworld'
-        self.max_steps = max_steps
-        self.sparse_reward = sparse_reward
-            
-    def _parse_obs(self,obs):
-        final_obs = obs
-        return final_obs
-    
-    def step(self,action):
-        self.step_count += 1
-        obs,raw_reward,done,truncated,info = self.env.step(action)
-        if 'episode' in info:
-            info.pop('episode')
-        info['is_success'] = info['success'] > 0.0
-        
-        if not info['success']:
-                
-            if self.prev_raw_reward is not None:
-                # reward = max(-0.01, (raw_reward - self.prev_raw_reward) * self.reward_scale ) - self.step_penality 
-                reward = (raw_reward - self.prev_raw_reward) * self.reward_scale  - self.step_penality 
-                self.prev_raw_reward = raw_reward 
-            else:
-                reward = 0.0 
-                self.prev_raw_reward = raw_reward 
-            if self.sparse_reward:
-                reward = 0.0
-        else:
-            reward = min(raw_reward , 5) ## don't want to be too large 
-        
-        obs = self._parse_obs(obs)
-        done = done or info['success'] > 0.0
-        truncated = truncated or self.step_count >= self.max_steps
-        
-        return obs,reward,done,truncated,info
-    def reset(self,seed=None,options=None):
-        self.prev_raw_reward = None
-        self.step_count = 0
-        obs,info = self.env.reset()
-        obs = self._parse_obs(obs)
-        return obs,info
-    def close(self):
-        self.env.close()
-    def render(self):
-        image = self.env.render()
-        return image[::-1, :, :]
-
-
-def make_myosuite_env(env_name,obs_config,seed=0,is_sparse_reward = False,camera_id_render = 4, camera_size = (256,256)):
-    from myosuite.utils import gym as myosuite_gym
-    env = myosuite_gym.make(env_name,seed=seed)
-    env = MyoSuiteWrapper(env,obs_config,is_sparse_reward,camera_id_render, camera_size)
-    env = gym.wrappers.RecordEpisodeStatistics(env)
-    return env
-
-class MyoSuiteWrapper(gym.Wrapper):
-    def __init__(self,env,obs_config,is_sparse_reward = False,camera_id_render = 4, camera_size = (256,256)):
-        super().__init__(env)
-        self.obs_config = obs_config
-        self.action_space = env.action_space
-        self.env_category = 'myosuite'
-        self.is_sparse_reward = is_sparse_reward
-        self.camera_id_render = camera_id_render
-        self.camera_size = camera_size
-        mj_renderer_cls = _import_optional_attr(
-            "myosuite.renderer.mj_renderer",
-            "MJRenderer",
-            "MyoSuite rendering",
-            "Install the optional MyoSuite dependency before running MyoSuite experiments.",
-        )
-        self.renderer = mj_renderer_cls(env.unwrapped.sim)
-                
-    def _parse_obs(self,obs):
-        final_obs = []
-        for k in self.obs_config.keys():
-            final_obs.append(obs[k])
-        final_obs = np.concatenate(final_obs, axis=0)
-        return final_obs
-    def step(self,action):
-        obs,reward,done,truncated,info = self.env.step(action)
-        if self.is_sparse_reward:
-            reward = info['rwd_sparse']
-        else:
-            reward = info['rwd_dense']
-        obs = self._parse_obs(obs)
-        done = done or info['solved']
-        done = bool(done)
-        truncated = bool(truncated)
-        info['is_success'] = info['solved']
-        
-        return obs,reward,done,truncated,info
-    def reset(self,seed=None,options=None):
-        obs,info = self.env.reset()
-        obs = self._parse_obs(obs)
-        return obs,info
-    def close(self):
-        self.env.close()
-    
-    def render(self):
-        image = self.renderer.render_offscreen(width=self.camera_size[0], height=self.camera_size[1],camera_id=self.camera_id_render)
-        return image
-    
-
-class HighwayEnvWrapper(gym.Wrapper):
-    def __init__(self,env,obs_config,flatten_obs = False):
-        super().__init__(env)
-        self.flatten_obs = flatten_obs
-        self.obs_config = obs_config
-        self.action_space = env.action_space
-        self.env_category = 'highway'
-        self.max_steps = int(self.unwrapped.config['duration'] *  self.unwrapped.config["policy_frequency"])
-        print("MAX STEPS", self.max_steps)
-    def step(self,action):
-        obs,reward,done,truncated,info = self.env.step(action)
-        info['is_success'] = info['rewards']['goal'] > 0.0 
-        obs_dict = {}
-        obs_dict['robot_states'] = obs if not self.flatten_obs else obs.reshape(-1)
-        return obs_dict,reward,done,truncated,info
-    def reset(self,seed=None,options=None):
-        obs,info = self.env.reset(seed=seed,options=options)
-        obs_dict = {}
-        obs_dict['robot_states'] = obs if not self.flatten_obs else obs.reshape(-1)
-        return obs_dict,info
-    def close(self):
-        self.env.close()
-    def render(self):
-        return self.env.render()
-
-
-class HighwayWeatherWrapper(gym.Wrapper):
-    CLEAR = 0
-    RAINY = 1
-    FOGGY = 2
-    SNOWY = 3
-    WEATHER_TYPES = [CLEAR, RAINY, FOGGY, SNOWY]
-    DURATION_RANGE = {
-        CLEAR: (100, 200),
-        RAINY: (50, 150),
-        FOGGY: (50, 150),
-        SNOWY: (30, 100),
-    }
-    WEATHER_COLORS = {
-        CLEAR: (0, 255, 0),
-        RAINY: (255, 0, 0),
-        FOGGY: (192, 192, 192),
-        SNOWY: (255, 255, 255)
-    }
-    WEATHER_NAMES = {
-        CLEAR: 'CLEAR',
-        RAINY: 'RAINY',
-        FOGGY: 'FOGGY',
-        SNOWY: 'SNOWY'
-    }
-    def __init__(self,env,weather_probs = None):
-        super().__init__(env)
-        self.action_space = env.action_space
-        self.env_category = 'highway'
-        self.max_steps = int(self.unwrapped.config['duration'] *  self.unwrapped.config["policy_frequency"])
-        self._cv2 = _import_optional_module(
-            "cv2",
-            "Highway weather rendering",
-            "Install opencv-python before rendering Highway weather environments.",
-        )
-        print("MAX STEPS", self.max_steps)
-        self.current_weather = self.CLEAR
-        if weather_probs is None:
-            self.weather_probs = [1.0, 0.0, 0.0, 0.0]
-        else:
-            self.weather_probs = np.array(weather_probs)
-            self.weather_probs = self.weather_probs / self.weather_probs.sum()
-    
-    def _parse_obs(self,obs):
-        # we should encode the weather type as one-hot vector
-        weather_type_one_hot = np.zeros(len(self.WEATHER_TYPES))
-        weather_type_one_hot[self.current_weather] = 1
-        obs = np.concatenate([weather_type_one_hot, obs.reshape(-1)], axis=0)
-        return obs
-        
-        
-    def step(self,action):
-        """
-        Similar to the reset step, we first change the perception, so that the observation could be changed.
-        but the step will call the transition function, where it should not change since the action is conditioned on the previous observation
-        """
-        if self.steps_remaining <= 0:
-            self._sample_new_weather() 
-            self._set_perception_distance(self.current_weather)
-        obs,reward,done,truncated,info = self.env.step(action)
-        self._set_friction(self.current_weather) 
-        self.steps_remaining -= 1 
-        if 'goal' in info['rewards']:
-            info['is_success'] = info['rewards']['goal'] > 0.0 
-        else:
-            info['is_success'] = False
-        
-        info['current_weather'] = self.current_weather
-        obs = self._parse_obs(obs)
-        return obs,reward,done,truncated,info
-    def reset(self,seed=None,options=None):
-        self._sample_new_weather() 
-        self._set_perception_distance(self.current_weather)
-        obs,info = self.env.reset(seed=seed,options=options)
-        obs = self._parse_obs(obs)
-        self._set_friction(self.current_weather) 
-        
-        obs = obs.reshape(-1)
-        return obs,info
-    def close(self):
-        self.env.close()
-    def render(self):
-        frame = self.env.render()
-        # Ensure frame is a writable, contiguous numpy array
-        frame = np.ascontiguousarray(frame)
-        weather_name = self.WEATHER_NAMES[self.current_weather]
-        text_main = f"Weather: {weather_name}"
-        text_sub = f"Left: {self.steps_remaining}"
-        color = self.WEATHER_COLORS[self.current_weather]
-        self._cv2.putText(frame, text_main, (10, 15), 
-                    self._cv2.FONT_HERSHEY_SIMPLEX, 0.35, color, 1, self._cv2.LINE_AA)
-            
-        self._cv2.putText(frame, text_sub, (10, 28), 
-                        self._cv2.FONT_HERSHEY_SIMPLEX, 0.25, (220, 220, 220), 1, self._cv2.LINE_AA)
-        return frame
-    
-    def _set_perception_distance(self,weather_type:int):
-        self.current_weather = weather_type 
-        if weather_type == self.RAINY:
-            self.env.unwrapped.PERCEPTION_DISTANCE = 200 # unit: m
-        elif weather_type == self.FOGGY:
-            self.env.unwrapped.PERCEPTION_DISTANCE = 100 # unit: m
-        elif weather_type == self.SNOWY:
-            self.env.unwrapped.PERCEPTION_DISTANCE = 100 # unit: m
-        elif weather_type == self.CLEAR:
-            self.env.unwrapped.PERCEPTION_DISTANCE = 200 # unit: m
-        else:
-            raise ValueError(f"Invalid weather type: {weather_type}")
-    
-    def _set_friction(self,weather_type:int):
-        if weather_type == self.RAINY:
-            self.env.unwrapped.controlled_vehicles[0].FRICTION_REAR = 5
-            self.env.unwrapped.controlled_vehicles[0].FRICTION_FRONT = 4
-        elif weather_type == self.FOGGY:
-            self.env.unwrapped.controlled_vehicles[0].FRICTION_REAR = 15
-            self.env.unwrapped.controlled_vehicles[0].FRICTION_FRONT = 15
-        elif weather_type == self.SNOWY:
-            self.env.unwrapped.controlled_vehicles[0].FRICTION_REAR = 3
-            self.env.unwrapped.controlled_vehicles[0].FRICTION_FRONT = 4
-        elif weather_type == self.CLEAR:
-            self.env.unwrapped.controlled_vehicles[0].FRICTION_REAR = 15
-            self.env.unwrapped.controlled_vehicles[0].FRICTION_FRONT = 15
-        else:
-            raise ValueError(f"Invalid weather type: {weather_type}")
-    
-    def _sample_new_weather(self):
-        self.current_weather = np.random.choice(self.WEATHER_TYPES, p=self.weather_probs) 
-        t_min, t_max = self.DURATION_RANGE[self.current_weather]
-        self.steps_remaining = np.random.randint(t_min, t_max + 1) 
-
-
-def make_highway_env(env_name,obs_config,seed=0, env_config = None,render_mode = 'rgb_array', flatten_obs = False):
-    _import_optional_module(
-        "highway_env",
-        "Highway environments",
-        "Install the optional HighwayEnv dependency before running highway experiments.",
-    )
-    env = gym.make(env_name, config=env_config,render_mode=render_mode)
-    env = HighwayEnvWrapper(env,obs_config,flatten_obs)
-    env = gym.wrappers.RecordEpisodeStatistics(env)
-    return env
-
-def make_highway_weather(
-    env_name,
-    weather_probs,
-    env_config,
-    seed=0
-):
-    _import_optional_module(
-        "highway_env",
-        "Highway weather environments",
-        "Install the optional HighwayEnv dependency before running highway experiments.",
-    )
-    env = gym.make(env_name, render_mode="rgb_array", config=env_config)
-    env = HighwayWeatherWrapper(env,weather_probs)
-    env = gym.wrappers.RecordEpisodeStatistics(env)
-    return env
-
-class HybridWalkerWrapper(gym.Wrapper):
-    def __init__(self, env, stack_frames=4,max_steps=1000):
-        """
-        Args:
-            env: The HybridBipedalWalker environment
-            stack_frames: int, number of frames to stack (k)
-        """
-        super().__init__(env)
-        self.step_count = 0
-        self.stack_frames = stack_frames
-        self.max_steps = max_steps
-        
-        # Use a deque as a fixed-length frame buffer
-        self.frames = deque(maxlen=stack_frames)
-        
-        # --- Flatten & Stack Action/Observation Space Setup ---
-        self.action_space = env.action_space
-        
-        # The original observation shape is (24,)
-        # After stacking, the observation shape should be (24 * k,)
-        # Expand observation_space accordingly to avoid dimension mismatch errors in RL code
-        src_low = self.env.observation_space.low
-        src_high = self.env.observation_space.high
-        
-        # Repeat the original bounds k times with np.tile
-        stacked_low = np.tile(src_low, stack_frames)
-        stacked_high = np.tile(src_high, stack_frames)
-        
-        self.observation_space = gym.spaces.Box(
-            low=stacked_low,
-            high=stacked_high,
-            dtype=self.env.observation_space.dtype
-        )
-        
-        self.env_category = 'box2d_hybrid'
-
-    def _get_flattened_obs(self):
-        """
-        Concatenate the k frames in the deque (24 dims each) into a flat (24*k,) vector.
-        """
-        # list(self.frames) returns [array(24,), array(24,), ...]
-        # np.concatenate joins them on axis 0, producing array(96,)
-        return np.concatenate(list(self.frames), axis=0)
-
-    def reset(self, seed=None, options=None):
-        self.step_count = 0
-        
-        # Get the initial frame
-        obs, info = self.env.reset(seed=seed, options=options)
-        
-        # On reset there is no history, so fill the buffer with the initial frame
-        # This makes the learner input at t=0 equal to [s0, s0, s0, s0]
-        # and avoids distribution shift from zero padding during cold start
-        for _ in range(self.stack_frames):
-            self.frames.append(obs)
-            
-        final_obs = self._get_flattened_obs()
-        return final_obs, info
-
-    def step(self, action):
-        self.step_count += 1
-        
-        # Execute the action
-        obs, reward, terminated, truncated, info = self.env.step(action)
-        
-        # Push the new frame into the buffer; the oldest frame is evicted automatically
-        self.frames.append(obs)
-        
-        # Get the flattened stacked frame
-        final_obs = self._get_flattened_obs()
-        if self.step_count >= self.max_steps:
-            terminated = True
-            truncated = True
-        
-        return final_obs, reward, terminated, truncated, info
-
-    def close(self):
-        self.unwrapped.close()
-
-    def render(self):
-        return self.unwrapped.render()
-
-
-def make_hybrid_walker(mode="learner",stack_frames=4,max_steps=1000):
-    hybrid_walker_cls = _import_optional_attr(
-        "third_party.customized_box2d.HybridBipedalWalker",
-        "HybridBipedalWalker",
-        "Box2D hybrid walker environments",
-        "Install the Box2D dependencies and keep third_party/customized_box2d available before running Box2D experiments.",
-    )
-    env = hybrid_walker_cls(mode=mode,render_mode="rgb_array")
-    env = HybridWalkerWrapper(env,stack_frames=stack_frames,max_steps=max_steps)
-    env = gym.wrappers.RecordEpisodeStatistics(env)
-    return env
-
-class HybridLanderWrapper(gym.Wrapper):
-    def __init__(self, env, stack_frames=4,max_steps=1000):
-        """
-        Args:
-            env: The HybridLunarLander environment instance
-            stack_frames: int, number of frames to stack (k)
-        """
-        super().__init__(env)
-        self.stack_frames = stack_frames
-        self.max_steps = max_steps
-        # Use a deque as a fixed-length sliding window (FIFO)
-        self.frames = deque(maxlen=stack_frames)
-        
-        self.action_space = env.action_space
-        
-        # --- Observation Space Flattening ---
-        # Original obs shape: (8,) -> after stacking: (8 * k,)
-        src_low = self.env.observation_space.low
-        src_high = self.env.observation_space.high
-        
-        # Repeat the original bounds k times
-        stacked_low = np.tile(src_low, stack_frames)
-        stacked_high = np.tile(src_high, stack_frames)
-        
-        self.observation_space = gym.spaces.Box(
-            low=stacked_low,
-            high=stacked_high,
-            dtype=self.env.observation_space.dtype
-        )
-        
-        # Tag the environment category for downstream special handling
-        self.env_category = 'box2d_hybrid_lander'
-
-    def _get_flattened_obs(self):
-        """
-        Concatenate the k frames in the deque into one long vector.
-        Return shape: (32,) if k=4
-        """
-        return np.concatenate(list(self.frames), axis=0)
-
-    def reset(self, seed=None, options=None):
-        """
-        Reset the environment and fill the buffer with the initial frame.
-        """
-        self.step_count = 0
-        obs, info = self.env.reset(seed=seed, options=options)
-        
-        # Cold start: fill the entire buffer with the first frame
-        # so the learner sees the stationary state [s0, s0, s0, s0] at t=0
-        for _ in range(self.stack_frames):
-            self.frames.append(obs)
-            
-        return self._get_flattened_obs(), info
-
-    def step(self, action):
-        """
-        Take one step, push the new frame, and compute is_success.
-        """
-        self.step_count += 1
-        obs, reward, terminated, truncated, info = self.env.step(action)
-        
-        # Push the new frame; the oldest frame is evicted automatically
-        self.frames.append(obs)
-        
-        # Get the flattened stacked frame
-        final_obs = self._get_flattened_obs()
-        
-        # --- Success Metric ---
-        # LunarLander logic: if lander.awake is False (sleeping/stationary)
-        # and there was no crash (-100), the step reward is set to +100.
-        info['is_success'] = False
-        if terminated and reward == 100: 
-             info['is_success'] = True
-        if self.step_count >= self.max_steps:
-            terminated = True
-            truncated = True
-        return final_obs, reward, terminated, truncated, info
-
-    def render(self):
-        return self.unwrapped.render()
-    
-    def close(self):
-        self.unwrapped.close()
-def make_hybrid_lander(mode="learner",stack_frames=4,max_steps=1000):
-    hybrid_lander_cls = _import_optional_attr(
-        "third_party.customized_box2d.HybridLunarLand",
-        "HybridLunarLander",
-        "Box2D hybrid lander environments",
-        "Install the Box2D dependencies and keep third_party/customized_box2d available before running Box2D experiments.",
-    )
-    env = hybrid_lander_cls(mode=mode,render_mode="rgb_array")
-    env = HybridLanderWrapper(env,stack_frames=stack_frames)
-    env = gym.wrappers.RecordEpisodeStatistics(env)
-    return env
-
-
-
-
-class HybridCarVectorWrapper(gym.Wrapper):
-    def __init__(self, env, stack_frames=4,max_steps=1000):
-        super().__init__(env)
-        self.stack_frames = stack_frames
-        self.frames = deque(maxlen=stack_frames)
-        self.max_steps = max_steps
-        # Calculate new observation space size
-        # Original Vector Dim = 14 (Phys) + 32 (Lidar) = 46
-        # Stacked = 46 * 4 = 184
-        base_dim = env.observation_space.shape[0]
-        self.observation_space = gym.spaces.Box(
-            low=-np.inf, high=np.inf, 
-            shape=(base_dim * stack_frames,), 
-            dtype=np.float32
-        )
-        self.env_category = 'box2d_hybrid_car_vector'
-
-    def _get_flattened_obs(self):
-        return np.concatenate(list(self.frames), axis=0)
-
-    def reset(self, seed=None, options=None):
-        self.step_count = 0
-        obs, info = self.env.reset(seed=seed, options=options)
-        for _ in range(self.stack_frames):
-            self.frames.append(obs)
-        return self._get_flattened_obs(), info
-
-    def step(self, action):
-        self.step_count += 1
-        obs, reward, terminated, truncated, info = self.env.step(action)
-        self.frames.append(obs)
-        return self._get_flattened_obs(), reward, terminated, truncated, info
-
-def make_hybrid_car_racing(mode="learner",stack_frames=4,max_steps=1000):
-    hybrid_car_cls = _import_optional_attr(
-        "third_party.customized_box2d.HybridCar",
-        "HybridCarRacing",
-        "Box2D hybrid car racing environments",
-        "Install the Box2D dependencies and keep third_party/customized_box2d available before running Box2D experiments.",
-    )
-    env = hybrid_car_cls(mode=mode,render_mode="rgb_array")
-    env = HybridCarVectorWrapper(env,stack_frames=stack_frames,max_steps=max_steps)
-    env = gym.wrappers.RecordEpisodeStatistics(env)
-    return env
-
-class HybridWeatherVectorWrapper(gym.Wrapper):
-    def __init__(self, env, stack_frames=4,max_steps=2000):
-        super().__init__(env)
-        self.stack_frames = stack_frames
-        self.frames = deque(maxlen=stack_frames)
-        self.max_steps = max_steps
-        base_dim = env.observation_space.shape[0]
-        self.observation_space = gym.spaces.Box(
-            low=-np.inf,
-            high=np.inf,
-            shape=(base_dim * stack_frames,),
-            dtype=np.float32,
-        )
-        self.env_category = 'box2d_hybrid_weather_vector'
-    def _get_flattened_obs(self):
-        return np.concatenate(list(self.frames), axis=0)
-
-    def reset(self, seed=None, options=None):
-        self.step_count = 0
-        obs, info = self.env.reset(seed=seed, options=options)
-        for _ in range(self.stack_frames):
-            self.frames.append(obs)
-        return self._get_flattened_obs(), info
-
-    def step(self, action):
-        self.step_count += 1
-        obs, reward, terminated, truncated, info = self.env.step(action)
-        self.frames.append(obs)
-        return self._get_flattened_obs(), reward, terminated, truncated, info
-
-    def render(self):
-        return self.unwrapped.render()
-
-    def close(self):
-        self.unwrapped.close()
-def make_hybrid_weather(mode="learner",stack_frames=4,max_steps=2000):
-    hybrid_weather_cls = _import_optional_attr(
-        "third_party.customized_box2d.HybridWeather",
-        "HybridWeather",
-        "Box2D hybrid weather environments",
-        "Install the Box2D dependencies and keep third_party/customized_box2d available before running Box2D experiments.",
-    )
-    assert mode in ["learner", "Sunny", "Rainy","Foggy"]
-    env = hybrid_weather_cls(mode=mode,render_mode="rgb_array")
-    env = HybridWeatherVectorWrapper(env,stack_frames=stack_frames,max_steps=max_steps)
-    env = gym.wrappers.RecordEpisodeStatistics(env)
-    return env
-
-def _get_hydra_config_name() -> Optional[str]:
-    """
-    Best-effort retrieval of Hydra's `config_name` inside a @hydra.main entrypoint.
-
-    Returns e.g. "dmc/CurrimaxAdv_cheetah" or "metaworld/simba_pickplace".
-    """
-    try:
-        from hydra.core.hydra_config import HydraConfig
-
-        cfg = HydraConfig.get()
-        name = getattr(getattr(cfg, "job", None), "config_name", None)
-        return str(name) if name else None
-    except Exception:
-        return None
-
 
 def _normalize_obs_config(obs_config: Any) -> Dict[str, Tuple[int, ...]]:
     """
@@ -854,52 +270,6 @@ def _normalize_obs_config(obs_config: Any) -> Dict[str, Tuple[int, ...]]:
     return out
 
 
-def _infer_env_category_from_config_name_or_cfg(
-    config_name: Optional[str],
-    cfg: Any,
-) -> Literal["dmc", "metaworld", "myosuite", "highway", "weather", "box2d"]:
-    """
-    Infer which env creator to use.
-
-    Priority:
-      1) Hydra config_name prefix (e.g. "dmc/...", "metaworld/...")
-      2) Inspect cfg.env keys
-    """
-    if config_name:
-        prefix = config_name.split("/", 1)[0].strip().lower()
-        if prefix in ("dmc", "metaworld", "myosuite", "box2d"):
-            return prefix  # type: ignore[return-value]
-        # Some users may pass config_name like "config/dmc/..." etc.
-        lowered = config_name.lower()
-        for p in ("dmc", "metaworld", "myosuite", "box2d"):
-            if f"/{p}/" in lowered or lowered.startswith(f"{p}_") or lowered.startswith(f"{p}/"):
-                return p  # type: ignore[return-value]
-
-    env_cfg = getattr(cfg, "env", None)
-    if env_cfg is not None:
-        # DMC has (domain_name, task_name)
-        if getattr(env_cfg, "domain_name", None) is not None and getattr(env_cfg, "task_name", None) is not None:
-            return "dmc"
-        # Box2D hybrid envs use env_name + mode/stack_frames
-        if getattr(env_cfg, "box2d_env_name", None) is not None or getattr(env_cfg, "is_box2d", None):
-            return "box2d"
-        if getattr(env_cfg, "env_name", None) in ("bipedal", "lander", "racingcar", "car_racing", "weather", "hybrid_weather"):
-            return "box2d"
-        if getattr(env_cfg, "mode", None) is not None and getattr(env_cfg, "stack_frames", None) is not None:
-            return "box2d"
-        # Metaworld has env_name
-        if getattr(env_cfg, "env_name", None) is not None:
-            return "metaworld"
-        # Myosuite typically uses env_name too, but projects often name it differently; handle explicitly if present.
-        if getattr(env_cfg, "myosuite_env_name", None) is not None or getattr(env_cfg, "is_myosuite", None):
-            return "myosuite"
-       
-    raise ValueError(
-        f"Could not infer env category from config_name={config_name!r} or cfg.env keys. "
-        f"Please name configs under dmc/ or metaworld/ (etc), or add recognizable keys to cfg.env."
-    )
-
-
 def make_env_and_eval_env_from_cfg(
     cfg: Any,
     *,
@@ -907,116 +277,38 @@ def make_env_and_eval_env_from_cfg(
     config_name: Optional[str] = None,
 ):
     """
-    Create (env, eval_env) using cfg + (optional) Hydra config_name inference.
+    Create (env, eval_env, obs_config_norm) for DMC using cfg.
 
-    This lets training scripts stay backend-agnostic:
-      env, eval_env, obs_config = make_env_and_eval_env_from_cfg(cfg)
+    Expects cfg.env.domain_name and cfg.env.task_name. Other simulators have been removed.
     """
-    if config_name is None:
-        config_name = _get_hydra_config_name()
-
-    env_category = _infer_env_category_from_config_name_or_cfg(config_name, cfg)
     obs_config_norm = _normalize_obs_config(obs_config if obs_config is not None else cfg.get("obs_config", {}))
 
     env_cfg = cfg.env
+    if getattr(env_cfg, "domain_name", None) is None or getattr(env_cfg, "task_name", None) is None:
+        raise ValueError("DMC env requires cfg.env.domain_name and cfg.env.task_name")
+
     seed = getattr(env_cfg, "seed", 0)
+    render_size = getattr(env_cfg, "render_size", (128, 128))
+    try:
+        render_size = tuple(render_size)
+    except Exception:
+        pass
+    n_sub_steps = getattr(env_cfg, "n_sub_steps", 1)
 
-    if env_category == "dmc":
-        render_size = getattr(env_cfg, "render_size", (128, 128))
-        try:
-            render_size = tuple(render_size)
-        except Exception:
-            pass
-        n_sub_steps = getattr(env_cfg, "n_sub_steps", 1)
-
-        env = make_dmc_env(
-            domain=env_cfg.domain_name,
-            task=env_cfg.task_name,
-            obs_config=obs_config_norm,
-            seed=seed,
-            render_size=render_size,
-            n_sub_steps=n_sub_steps,
-        )
-        eval_env = make_dmc_env(
-            domain=env_cfg.domain_name,
-            task=env_cfg.task_name,
-            obs_config=obs_config_norm,
-            seed=seed,
-            render_size=render_size,
-            n_sub_steps=n_sub_steps,
-        )
-        return env, eval_env, obs_config_norm
-
-    if env_category == "metaworld":
-        env = make_metaworld_env(
-            env_name=env_cfg.env_name,
-            obs_config=obs_config_norm,
-            seed=seed,
-            camera_to_render=getattr(env_cfg, "camera_to_render", "corner4"),
-            reward_scale= env_cfg.reward_scale ,
-            step_penality= env_cfg.step_penality,
-            sparse_reward = env_cfg.sparse_reward
-        )
-        eval_env = make_metaworld_env(
-            env_name=env_cfg.env_name,
-            obs_config=obs_config_norm,
-            seed=seed,
-            camera_to_render=getattr(env_cfg, "camera_to_render", "corner4"),
-            reward_scale=env_cfg.reward_scale,
-            step_penality=env_cfg.step_penality,
-            sparse_reward = env_cfg.sparse_reward
-        )
-        return env, eval_env, obs_config_norm
-
-    if env_category == "myosuite":
-        env_name = getattr(env_cfg, "env_name", None) or getattr(env_cfg, "myosuite_env_name", None)
-        if env_name is None:
-            raise ValueError("myosuite env requires cfg.env.env_name (or cfg.env.myosuite_env_name)")
-        env = make_myosuite_env(
-            env_name=env_name,
-            obs_config=obs_config_norm,
-            seed=seed,
-            is_sparse_reward=getattr(env_cfg, "is_sparse_reward", False),
-            camera_id_render=getattr(env_cfg, "camera_id_render", 4),
-            camera_size=getattr(env_cfg, "camera_size", (256, 256)),
-        )
-        eval_env = make_myosuite_env(
-            env_name=env_name,
-            obs_config=obs_config_norm,
-            seed=seed,
-            is_sparse_reward=getattr(env_cfg, "is_sparse_reward", False),
-            camera_id_render=getattr(env_cfg, "camera_id_render", 4),
-            camera_size=getattr(env_cfg, "camera_size", (256, 256)),
-        )
-        return env, eval_env, obs_config_norm
-
-    if env_category == "box2d":
-        env_name = getattr(env_cfg, "env_name", None) or getattr(env_cfg, "box2d_env_name", None)
-        if env_name is None:
-            raise ValueError("box2d env requires cfg.env.env_name (or cfg.env.box2d_env_name)")
-        mode = getattr(env_cfg, "mode", "learner")
-        stack_frames = getattr(env_cfg, "stack_frames", 4)
-        max_steps = getattr(env_cfg, "max_steps", 1000)
-        env_key = str(env_name).lower()
-
-        if env_key in ("bipedal", "walker", "hybrid_walker"):
-            env = make_hybrid_walker(mode=mode, stack_frames=stack_frames, max_steps=max_steps)
-            eval_env = make_hybrid_walker(mode=mode, stack_frames=stack_frames, max_steps=max_steps)
-            return env, eval_env, obs_config_norm
-        if env_key in ("lander", "hybrid_lander"):
-            env = make_hybrid_lander(mode=mode, stack_frames=stack_frames, max_steps=max_steps)
-            eval_env = make_hybrid_lander(mode=mode, stack_frames=stack_frames, max_steps=max_steps)
-            return env, eval_env, obs_config_norm
-        if env_key in ("racingcar", "car_racing", "hybrid_car_racing"):
-            env = make_hybrid_car_racing(mode=mode, stack_frames=stack_frames, max_steps=max_steps)
-            eval_env = make_hybrid_car_racing(mode=mode, stack_frames=stack_frames, max_steps=max_steps)
-            return env, eval_env, obs_config_norm
-        if env_key in ("weather", "hybrid_weather", "hybrid_weather_car"):
-            env = make_hybrid_weather(mode=mode, stack_frames=stack_frames, max_steps=max_steps)
-            eval_env = make_hybrid_weather(mode=mode, stack_frames=stack_frames, max_steps=max_steps)
-            return env, eval_env, obs_config_norm
-
-        raise ValueError(f"Unsupported box2d env_name: {env_name}")
-
-    # Should be unreachable due to Literal return type, but keep as guard.
-    raise ValueError(f"Unsupported env category: {env_category}")
+    env = make_dmc_env(
+        domain=env_cfg.domain_name,
+        task=env_cfg.task_name,
+        obs_config=obs_config_norm,
+        seed=seed,
+        render_size=render_size,
+        n_sub_steps=n_sub_steps,
+    )
+    eval_env = make_dmc_env(
+        domain=env_cfg.domain_name,
+        task=env_cfg.task_name,
+        obs_config=obs_config_norm,
+        seed=seed,
+        render_size=render_size,
+        n_sub_steps=n_sub_steps,
+    )
+    return env, eval_env, obs_config_norm

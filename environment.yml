@@ -1,4 +1,4 @@
-name: oracles
+name: opi
 channels:
   - pytorch
   - nvidia
@@ -9,7 +9,7 @@ dependencies:
   - pytorch
   - torchvision
   - pytorch-cuda=12.4
-  - mujoco>=3.3
+  # MuJoCo: install via pip (see base.txt) so bindings match dm_control's expected MjModel layout (e.g. cam_orthographic)
   - glfw
   - glew
   - ffmpeg

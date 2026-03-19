@@ -12,6 +12,7 @@ opencv-python
 rliable
 
 gymnasium==1.2.0
+mujoco>=3.6.0
 dm-control==1.0.28
 dm-env==1.6
 dm-tree==0.1.9

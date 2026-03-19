@@ -3,7 +3,7 @@ defaults:
   - /base_configs/maxAdv_dmc
   - /oracles/dmc/cheetah_run
   - _self_
-method_name: "DEBUG"
+method_name: "CurrimaxAdv_Cheetah"
 
 
 seed: 42

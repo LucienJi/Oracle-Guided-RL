@@ -19,7 +19,7 @@ from env.env_utils import (
 from data_buffer.replay_buffer import ReplayBuffer
 
 
-@hydra.main(config_path="../../config", config_name="baselines_configs/maxVQ_quad", version_base=None)
+@hydra.main(config_path="../../config", config_name="baselines_configs/maxVQ/cheetah/maxVQ_cheetah", version_base=None)
 def train_VQ_simba(cfg: DictConfig):
     from algo.baselines.maxVQ import OracleSelectionAlgo
 

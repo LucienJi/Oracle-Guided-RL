@@ -7,11 +7,6 @@ import torch
 from omegaconf import OmegaConf
 
 from env.env_utils import _is_missing_checkpoint, _banner
-from model.mlp import DeterministicPolicy, OraclePolicyBase
-from model.metaworld_oracle_policy import (
-    MetaworldOraclePolicyWrapper,
-    MetaworldTorchOraclePolicyWrapper,
-)
 from model.simba import SimbaCritics, SimbaValues
 from model.oracle_wrappers import DeterministicSimbaOracleWrapper
 
@@ -29,6 +24,9 @@ def _load_oracle_model_args(ckpt_path: str):
 
 
 def _build_oracle_modules(*, obs_shape, act_dim, device, actor_args, critic_args):
+    # Lazy import so Simba-only workflows don't require model/mlp.py.
+    from model.mlp import DeterministicPolicy  # type: ignore
+
     actor = DeterministicPolicy(obs_shape=obs_shape, action_dim=act_dim, model_args=actor_args).to(device)
     critic = SimbaCritics(obs_shape=obs_shape, action_dim=act_dim, model_args=critic_args).to(device)
     value = SimbaValues(obs_shape=obs_shape, action_dim=act_dim, model_args=critic_args).to(device)
@@ -70,6 +68,12 @@ def _require_keys(cfg_dict: Dict[str, Any], keys, *, context: str):
 
 
 def _build_metaworld_oracle_actor(*, cfg, oracle_index: int, oracle_name: str, spec, act_dim: int):
+    # Lazy import so DMC+CurrimaxAdv Simba runs don't require metaworld oracle code.
+    from model.metaworld_oracle_policy import (  # type: ignore
+        MetaworldOraclePolicyWrapper,
+        MetaworldTorchOraclePolicyWrapper,
+    )
+
     oracle_cfg = _resolve_oracle_cfg(cfg, spec)
     _require_keys(
         oracle_cfg,
@@ -183,8 +187,8 @@ def build_oracle_modules_from_cfg(
     oracles_dict: Dict[str, Any],
     default_oracle_actor_args,
     default_oracle_critic_args,
-) -> Tuple[Dict[str, OraclePolicyBase], Dict[str, SimbaCritics], Dict[str, SimbaValues]]:
-    oracles_actors: Dict[str, OraclePolicyBase] = {}
+) -> Tuple[Dict[str, Any], Dict[str, SimbaCritics], Dict[str, SimbaValues]]:
+    oracles_actors: Dict[str, Any] = {}
     oracles_critics: Dict[str, SimbaCritics] = {}
     oracles_values: Dict[str, SimbaValues] = {}
 

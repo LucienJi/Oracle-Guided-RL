@@ -12,9 +12,6 @@ from algo.algo_utils import reshape_into_blocks, save_eval_results_to_csv, categ
 from data_buffer.replay_buffer import ReplayBuffer
 from model.simba import DeterministicSimbaPolicy, SimbaCritics
 from model.simba_base import l2normalize_network
-from model.mlp import OraclePolicyBase
-
-
 
 
 
@@ -31,7 +28,7 @@ class LOKIAlgo(BaseAlgo):
         *,
         learner_actor: DeterministicSimbaPolicy,
         learner_critic: SimbaCritics,
-        oracles_actors: Dict[str, OraclePolicyBase],
+        oracles_actors: Dict[str, DeterministicSimbaPolicy],
         args: Dict[str, Any],
         device: torch.device,
     ):

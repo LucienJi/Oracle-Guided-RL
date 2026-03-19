@@ -2,7 +2,7 @@
 defaults:
   - /base_configs/simba_dmc
   - _self_
-method_name: "Simba_DEBUG"
+method_name: "Simba_Cheetah"
 env:
   domain_name: "cheetah"
   task_name: "run"
@@ -20,7 +20,7 @@ training:
   eval_every: 10000  # How often to evaluate the policy (steps)
   save_freq: 1000  # How often to save checkpoints (steps)
   resume: true  # Whether to resume from a checkpoint
-  use_wandb: true  # whether to use Weights & Biases for logging
+  use_wandb: false  # whether to use Weights & Biases for logging
   track: true  # Whether to track metrics
   use_compile: true
-  save_video: true  # Whether to save video
+  save_video: false  # Whether to save video

@@ -22,7 +22,6 @@ from algo.algo_utils import ObservationNormalizer, RewardNormalizer, save_eval_r
 from data_buffer.replay_buffer import ReplayBuffer
 from model.simba import DeterministicSimbaPolicy, SimbaCritics, SimbaValues
 from model.simba_base import EPS, l2normalize_network
-from model.mlp import OraclePolicyBase
 
 
 class OracleSelectionAlgo(BaseAlgo):
@@ -37,7 +36,7 @@ class OracleSelectionAlgo(BaseAlgo):
         *,
         selection_mode: str,
         learner_actor: DeterministicSimbaPolicy,
-        oracles_actors: Dict[str, OraclePolicyBase],
+        oracles_actors: Dict[str, DeterministicSimbaPolicy],
         oracles_values: Optional[Dict[str, SimbaValues]] = None,
         oracles_critics: Optional[Dict[str, SimbaCritics]] = None,
         args: Dict[str, Any],

@@ -19,7 +19,7 @@ from env.env_utils import (
 from data_buffer.replay_buffer import ReplayBuffer
 
 
-@hydra.main(config_path="../../config", config_name="baselines_configs/loki/quad/loki_quad", version_base=None)
+@hydra.main(config_path="../../config", config_name="baselines_configs/loki/cheetah/loki_cheetah", version_base=None)
 def train_loki_simba(cfg: DictConfig):
     from algo.baselines.loki import LOKIAlgo
 

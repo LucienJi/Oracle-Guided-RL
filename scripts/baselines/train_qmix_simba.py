@@ -19,7 +19,7 @@ from env.env_utils import (
 from data_buffer.replay_buffer import ReplayBuffer
 
 
-@hydra.main(config_path="../../config", config_name="baselines_configs/qmix/cartpole/qmix_cartpole", version_base=None)
+@hydra.main(config_path="../../config", config_name="baselines_configs/qmix/cheetah/qmix_cheetah", version_base=None)
 def train_qmix_simba(cfg: DictConfig):
     from algo.baselines.qmix import QMPAlgo
 

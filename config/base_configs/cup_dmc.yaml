@@ -3,7 +3,6 @@
 defaults:
   - /paths
   - /oracles/simba_based_oracle_args
-  - /oracles/mlp_based_oracle_args
 
 seed: 42
 save_video_fps: 30

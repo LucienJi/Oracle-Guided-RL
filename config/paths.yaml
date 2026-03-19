@@ -1,7 +1,4 @@
 # @package paths
-defaults:
-  - optional paths_local
-
 # Global path configuration
 # This file defines the project root directory
 # 
@@ -17,6 +14,5 @@ defaults:
 # 3. Or manually create config/paths_local.yaml with: project_root: /your/path
 
 # Project root directory
-# Priority: paths_local.project_root > ORACLES_PROJECT_ROOT env var > current working directory
-# Note: paths_local.yaml is gitignored and created by setup_paths.sh
-project_root: ${oc.select:paths_local.project_root,${oc.env:ORACLES_PROJECT_ROOT,${hydra:runtime.cwd}}}
+# Priority: ORACLES_PROJECT_ROOT env var > current working directory
+project_root: ${oc.env:ORACLES_PROJECT_ROOT,${hydra:runtime.cwd}}

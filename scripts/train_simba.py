@@ -57,7 +57,7 @@ def _write_cfg_snapshot(cfg: DictConfig) -> None:
         OmegaConf.save(cfg, handle, resolve=True)
 
 
-@hydra.main(config_path="../config", config_name="dmc/submission_smoke_cartpole", version_base=None)
+@hydra.main(config_path="../config", config_name="dmc/simba_cheetah", version_base=None)
 def train_simba(cfg: DictConfig) -> None:
     """Entry point for SIMBA training."""
     from algo.baselines.simba import SIMBA
