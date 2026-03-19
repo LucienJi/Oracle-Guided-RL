@@ -1,166 +1,123 @@
-# Oracle-Guided-RL Submission Package
+# Oracle-Guided-RL
 
-This submission packages a DeepMind Control (DMC) reinforcement learning training pipeline implemented in Python with Hydra-based configuration. The professor-facing review path focuses on two tracked entry points: `scripts/train_simba.py` for the SIMBA baseline and `scripts/train_CurrimaxAdv.py` for the oracle-guided variant. The repository still contains broader research code, but Box2D, Metaworld, Highway, and MyoSuite workflows are intentionally out of scope for the submission package because they rely on optional or unversioned dependencies.
+Oracle-guided off-policy reinforcement learning for continuous control in the **DeepMind Control (DMC)** suite. This project trains a single agent (the *learner*) to solve tasks such as Cheetah Run, Cartpole Swingup, and Walker Run, while using one or more **oracles**—pre-trained (and possibly suboptimal) policies—as guides. The learner is trained to improve beyond the oracles.
 
-## Submission Scope
+## Overview
 
-- Primary workflow: DMC training with `python -m scripts.train_simba`
-- Secondary workflow: DMC oracle-guided training with `python -m scripts.train_CurrimaxAdv`
-- Review path: local smoke validation plus an honest Slurm/cluster execution path
-- Out of scope for review: optional benchmark families that need `third_party/` clones or extra packages
+The program supports three workflows:
 
-## Repository Structure
+1. **Prepare oracles** — `train_simba.py` runs standard off-policy actor-critic (SIMBA) training **without** oracles. It produces policy checkpoints that you then register as oracles. This is **not** a baseline; it is the tool to **prepare oracle checkpoints**.
 
-- `algo/`: training algorithms and replay/artifact helpers
-- `config/dmc/`: DMC experiment definitions, including submission smoke configs
-- `env/`: environment factories and wrappers
-- `model/`: actor/critic network implementations
-- `scripts/`: runnable entry points and the `smoke_dmc.py` review helper
-- `slurm/`: representative batch script for cluster execution
-- `tests/`: lightweight composition/import tests for the submission package
-- `examples/`: sample commands for the professor review path
-- `report_draft.md`: short report draft required by the assignment
-- `SUBMISSION_CHECKLIST.md`: explicit checklist of included deliverables and verified items
+2. **Our method: CurrimaxAdv** — `train_CurrimaxAdv_simba.py` trains the learner alongside multiple oracle policies. At each step, the learner and each oracle propose action candidates; critics score them to build an oracle-guided behavior policy for exploration. The learner is updated with oracle guidance and can surpass the oracles over time.
 
-## Compilation / Setup
+3. **Baselines** — Oracle-guided baselines for comparison: LOKI, CUP, MAPS, QMIX, MaxVQ (in `scripts/baselines/`). All use the same oracle checkpoints for fair comparison.
 
-For this Python project, “compilation” means preparing the execution environment.
+## Setup
+
+**Requirements:** Conda (Miniconda or Anaconda)
+
+From the project root:
 
 ```bash
-conda env create -f environment.yml
-conda activate oracles
-bash setup_paths.sh
+bash install.sh
+conda activate opi
 ```
 
-`setup_paths.sh` writes `config/paths_local.yaml` with the current repository root. That file is gitignored and keeps machine-specific paths out of tracked configs.
-
-### What this setup installs
-
-- Core Python runtime and PyTorch
-- Hydra and OmegaConf
-- DeepMind Control dependencies for the DMC submission path
-- Developer/test packages such as `pytest`
-
-### Optional dependencies not required for the submission path
-
-Metaworld, HighwayEnv, MyoSuite, CARL, and the custom Box2D benchmarks remain optional. They are not needed to review the DMC submission package.
-
-## Quick Review Path
-
-### 1. Local smoke test
+This creates a Conda environment named `opi` and installs PyTorch, Hydra, DeepMind Control, Gymnasium, and other dependencies. For headless rendering (e.g. on a cluster), set:
 
 ```bash
-python -m scripts.smoke_dmc --config-name dmc/submission_smoke_cartpole
+export MUJOCO_GL=egl
 ```
 
-What it does:
+### Path configuration
 
-- composes the submission config,
-- builds the DMC environment,
-- instantiates the SIMBA actor/critic path,
-- runs a few inference steps,
-- prints a JSON summary including the artifact directories.
+Oracle checkpoints use `${paths.project_root}` in configs. To set the project root:
 
-### 2. Short local training run
+- Run from the project directory (default), or  
+- Set `export ORACLES_PROJECT_ROOT=/path/to/Oracle-Guided-RL`, or  
+- Create `config/paths_local.yaml` with `project_root: /your/path` (see `config/paths_local.yaml.example`)
+
+## Quick Start
+
+### 1. Prepare oracles (required before CurrimaxAdv or baselines)
+
+Train a policy and save checkpoints:
 
 ```bash
-python -m scripts.train_simba \
-  --config-name dmc/submission_smoke_cartpole \
-  training.total_timesteps=1000 \
-  training.eval_every=250 \
-  training.save_freq=250 \
-  training.use_wandb=false \
-  training.save_video=false \
-  training.resume=false \
-  training.use_compile=false
+python -m scripts.train_simba --config-name dmc/simba_cheetah
 ```
 
-### 3. Optional oracle-guided smoke/training path
+Checkpoints are written under `checkpoints/`. Then point the oracle config at those paths (see [Oracle configuration](#oracle-configuration) below).
+
+### 2. Run CurrimaxAdv (oracle-guided method)
 
 ```bash
-python -m scripts.smoke_dmc --config-name dmc/submission_currimaxadv_smoke
-python -m scripts.train_CurrimaxAdv --config-name dmc/submission_currimaxadv_smoke
+python -m scripts.train_CurrimaxAdv_simba --config-name dmc/CurrimaxAdv_cheetah
 ```
 
-The `submission_currimaxadv_smoke` config uses `null` oracle checkpoints so the oracle-guided path can be constructed without relying on bundled checkpoints.
-
-## Slurm / Cluster Usage
-
-The project is realistically intended for cluster execution when training beyond the smoke path.
-
-Representative batch script:
+Override from the command line:
 
 ```bash
-sbatch slurm/dmc_train_simba.sbatch
+python -m scripts.train_CurrimaxAdv_simba --config-name dmc/CurrimaxAdv_walker training.n_oracles=2 seed=0
 ```
 
-The script includes placeholders for:
+### 3. Run baselines
 
-- partition
-- account
-- GPU count
-- CPU count
-- memory
-- wall-clock time
-- Conda initialization path
-
-Typical monitoring commands:
+Each baseline shares the same oracle config for a task to ensure fair comparison:
 
 ```bash
-squeue -u "$USER"
-sacct -j <job_id> --format=JobID,JobName,State,Elapsed
+python -m scripts.baselines.train_loki_simba --config-name baselines_configs/loki/cheetah/loki_cheetah
+python -m scripts.baselines.train_cup_simba --config-name baselines_configs/cup/cheetah/cup_cheetah
+python -m scripts.baselines.train_maps_simba --config-name baselines_configs/maps/cheetah/maps_cheetah
+python -m scripts.baselines.train_qmix_simba --config-name baselines_configs/qmix/cheetah/qmix_cheetah
+python -m scripts.baselines.train_maxVQ_simba --config-name baselines_configs/maxVQ/cheetah/maxVQ_cheetah
 ```
 
-## Inputs and Outputs
+## Oracle configuration
 
-### Inputs
+Oracle checkpoint paths are defined in task-specific oracle configs under `config/oracles/dmc/`, e.g. `cheetah_run.yaml`:
 
-- Hydra config selected with `--config-name`
-- optional Hydra overrides such as `seed=1` or `training.total_timesteps=5000`
-- local path configuration written by `setup_paths.sh`
+```yaml
+oracles_dict:
+  oracle_0: '${paths.project_root}/checkpoints/cheetah_run/Simba_Cheetah/seed42/checkpoints/Simba_Cheetah_seed42_best.pt'
+  oracle_1: '${paths.project_root}/checkpoints/cheetah_run/Simba_Cheetah/seed42/checkpoints/Simba_Cheetah_seed42_75999.pt'
+  oracle_2: null
+```
 
-### Outputs
+- Set each `oracle_*` to a full path to a `.pt` checkpoint, or `null` if unused.  
+- `training.n_oracles` must match the number of non-null oracles.  
+- CurrimaxAdv and all baselines for a given task include the **same** oracle config (e.g. `- /oracles/dmc/cheetah_run`) in their Hydra `defaults`, so they use the same oracles.
 
-Artifact locations are generated automatically by `algo/artifacts.py`. For the submission configs, the main outputs are:
+## Configuration structure
 
-- `checkpoints/<task>/<method>/seed<seed>/checkpoints/`
-- `checkpoints/<task>/<method>/seed<seed>/replay/`
-- `checkpoints/<task>/<method>/seed<seed>/videos/` when video saving is enabled
-- `checkpoints/<task>/<method>/seed<seed>/run.json`
-- `eval/<task>/eval/<method>/`
+All runs are configuration-driven via **Hydra**. Configs are composed from multiple YAML files:
 
-## Example Commands
+| Directory | Purpose |
+|-----------|---------|
+| `config/base_configs/` | Algorithm defaults: `simba_dmc.yaml`, `maxAdv_dmc.yaml`, `loki_dmc.yaml`, `cup_dmc.yaml`, etc. |
+| `config/dmc/` | Task-level run configs for SIMBA and CurrimaxAdv (e.g. `simba_cheetah.yaml`, `CurrimaxAdv_cheetah.yaml`) |
+| `config/oracles/dmc/` | Oracle checkpoint paths per task (`oracles_dict`) |
+| `config/baselines_configs/<method>/<task>/` | Baseline run configs (e.g. `loki/cheetah/loki_cheetah.yaml`) |
 
-Additional ready-to-copy commands are listed in [examples/README.md](/share/data/ripl/jjt/projects/oracles/examples/README.md).
+Each run config’s `defaults:` lists a base config, the task oracle config (for oracle-guided runs), and `_self_` for overrides. CurrimaxAdv hyperparameters live in `config/base_configs/maxAdv_dmc.yaml`; baseline hyperparameters in the corresponding base configs.
 
-## Expected Artifacts
+## Repository structure
 
-After a successful smoke or training run, expect at least:
+| Path | Description |
+|------|-------------|
+| `algo/` | Training algorithms, replay logic, artifact helpers |
+| `config/` | Hydra configs (dmc, base_configs, oracles, baselines_configs) |
+| `data_buffer/` | Replay buffer |
+| `env/` | Environment factories and wrappers |
+| `model/` | Actor/critic networks (`simba.py`, `simba_base.py`) |
+| `scripts/` | Entry points: `train_simba.py`, `train_CurrimaxAdv_simba.py` |
+| `scripts/baselines/` | Baseline entry points (loki, cup, maps, qmix, maxVQ) |
 
-- a resolved config snapshot `cfg.yaml`
-- a run manifest `run.json`
-- checkpoint and replay directories created under `checkpoints/`
+## Outputs
 
-Longer training runs may also produce:
+- **Checkpoints** (`.pt`): `checkpoints/<task>/<method>/seed<seed>/checkpoints/`
+- **Replay buffer**: `checkpoints/<task>/<method>/seed<seed>/replay/`
+- **Run manifest** / config snapshot: `run.json`, `cfg.yaml`
+- **Evaluation**: `eval/<task>/eval/<method>/`
+- **Videos** (if enabled): `checkpoints/<task>/<method>/seed<seed>/videos/`
 
-- `.pt` checkpoint files
-- evaluation CSV files
-- videos if video saving is enabled
-
-## Troubleshooting
-
-- `ModuleNotFoundError: No module named 'torch'`:
-  activate the Conda environment created from `environment.yml`.
-- `ImportError` mentioning `metaworld`, `highway_env`, `myosuite`, or Box2D:
-  you are trying to use an optional benchmark path that is not part of the DMC submission package.
-- `ImportError` mentioning `dm_control.suite`:
-  the DMC dependencies were not installed correctly.
-- Hydra config/path issues:
-  rerun `bash setup_paths.sh` and confirm `config/paths_local.yaml` was created.
-
-## Limitations and Honest Caveats
-
-- Full training is cluster-oriented; the guaranteed professor review path is the smoke test plus the documented Slurm script.
-- The current submission package does not claim local reproducibility for every benchmark family in the repository.
-- The repository still contains broader research code and ignored/generated artifact directories; the professor-facing path is intentionally narrower than the full research workspace.
-- Validation in the current shell was limited by missing runtime packages; see `SUBMISSION_CHECKLIST.md` for verified versus unverified items.
